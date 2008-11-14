@@ -88,7 +88,7 @@ Array.prototype.clone = function () {
 /**
  * "innerHTML = html" is pretty slow in FF.  Happily a lot of our innerHTML
  * changes are triggered by periodic refreshes on torrents whose state hasn't
- * changed sine the last update, so even this simple test helps a lot.
+ * changed since the last update, so even this simple test helps a lot.
  */
 function setInnerHTML( e, html )
 {
