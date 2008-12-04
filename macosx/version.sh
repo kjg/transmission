@@ -10,10 +10,7 @@
 PEERID_PREFIX="-TR151Z-"
 USERAGENT_PREFIX="1.51+"
 
-SVN_REVISION=`find -E ./libtransmission ./macosx                     \
-                  -regex ".*\.([chmp]|cpp|po|sh)"                    \
-                  -exec grep -oh '\$Id: [^ ]\+ [0-9]\+' {} +         \
-                  | awk '{ if ($3 > max) max = $3} END { print max }'`
+SVN_REVISION=`git rev-parse --short HEAD`
 
 # Generate files to be included: only overwrite them if changed so make
 # won't rebuild everything unless necessary
