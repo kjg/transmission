@@ -726,7 +726,7 @@ TorrentFile.prototype = {
 	refreshPriorityHTML: function() {
 		if (this['_last_refreshed_prio'] == this._prio) { return; }
 		var priority = { '1': 'high', '0': 'normal', '-1': 'low' }[new String(this._prio)];
-		var off_priorities = [ 'high', 'normal', 'low' ].sort(function(a,b) { return (a == priority); } );
+		var off_priorities = [ 'high', 'normal', 'low' ].sort(function(a,b) { return (a == priority) ? 1 : -1; } );
 		this._priority_control.addClass(priority).
 			removeClass(off_priorities[0]).
 			removeClass(off_priorities[1]);
