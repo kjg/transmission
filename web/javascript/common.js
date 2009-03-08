@@ -42,11 +42,6 @@ $(document).ready( function() {
 	transmission = new Transmission();
 
 	if ($.browser.safari) {
-		
-		// Fix div height problem - causes scrollbar flash in
-		// firefox so have to be safari-specific
-		$('#torrent_inspector').css('height', '100%');
-		
 		// Move search field's margin down for the styled input
 		$('#torrent_search').css('margin-top', 3);		
 	}

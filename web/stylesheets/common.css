@@ -514,6 +514,7 @@ div#torrent_inspector {
 	border-left: 1px solid #888;
 	z-index: 2;
 	text-align: left;
+	overflow: auto;
 }
 div#torrent_inspector #torrent_inspector_name {
 	margin: 0;
@@ -548,8 +549,8 @@ div#inspector_tabs {
 	background-position: left -26px; /* the highlighted part of the image */
 }
 .inspector_container {
-	margin: 10px;
-	width: 330px; /* inspector_width==350 - ((margin==10)*2) */
+	margin: 3%;
+	width: 96%;
 }
 .inspector_group {
 	display: table;
