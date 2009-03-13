@@ -1155,6 +1155,7 @@ Transmission.prototype =
 					delete e._torrent;
 					e.hide( );
 				}
+				t.hideFileList();
 				this._torrents.splice( pos, 1 );
 				removedAny = true;
 			}
