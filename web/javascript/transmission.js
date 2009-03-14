@@ -669,10 +669,11 @@ Transmission.prototype =
 	},
 
 	periodicRefresh: function() {
-		if (!this._periodicRefreshIterations)
-			this._periodicRefreshIterations = 0;
+		// Note: 'this' != 'transmission instance' since it is being called by setInterval
+		if (!transmission._periodicRefreshIterations)
+			transmission._periodicRefreshIterations = 0;
 
-		remote.loadTorrents(this._periodicRefreshIterations++ % 10 == 0);
+		remote.loadTorrents(transmission._periodicRefreshIterations++ % 10 == 0);
 	},
 
 	scheduleFileRefresh: function() {
@@ -1138,7 +1139,7 @@ Transmission.prototype =
 			} else {
 				// There are new torrents available
 				// pick them up on the next refresh
-				this.togglePeriodicRefresh(this._periodicRefresh);
+				this.scheduleFileRefresh();
 			}
 		}
 		
@@ -1252,7 +1253,7 @@ Transmission.prototype =
 					tr.remote.loadTorrents( true );
 					tr.togglePeriodicRefresh( true );
 				};
-				this.togglePeriodicRefresh( false );
+				tr.togglePeriodicRefresh( false );
 				$('#torrent_upload_form').ajaxSubmit( args );
 			}
 		}
