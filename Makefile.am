@@ -14,9 +14,6 @@ endif
 if BUILD_MAC
   MAC_DIR = macosx
 endif
-if BUILD_WX
-  WX_DIR = wx
-endif
 
 SUBDIRS = \
   doc \
@@ -26,8 +23,7 @@ SUBDIRS = \
   $(CLI_DIR) \
   $(BEOS_DIR) \
   $(GTK_DIR) \
-  $(MAC_DIR) \
-  $(WX_DIR)
+  $(MAC_DIR)
 
 EXTRA_DIST = \
   web \
@@ -68,8 +64,7 @@ clutch_jquery_DATA = \
   web/javascript/jquery/jquery.contextmenu.min.js \
   web/javascript/jquery/jquery.min.js \
   web/javascript/jquery/jquery.form.min.js \
-  web/javascript/jquery/jquery.transmenu.min.js \
-  web/javascript/jquery/jquery.dimensions.min.js
+  web/javascript/jquery/jquery.transmenu.min.js
 
 clutch_imagesdir = $(clutchdir)/images
 clutch_images_DATA = \

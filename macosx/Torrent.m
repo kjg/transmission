@@ -416,7 +416,7 @@ int trashDataFile(const char * filename)
 {
     const BOOL up = tr_torrentIsUsingGlobalSpeedLimit(fHandle, TR_UP);
     const BOOL down = tr_torrentIsUsingGlobalSpeedLimit(fHandle, TR_DOWN);
-    NSAssert(up == down, @"upload and download globallimit setting should have the same");
+    NSAssert(up == down, @"upload and download global limit settings should have the same value");
     return up;
 }
 
@@ -935,7 +935,7 @@ int trashDataFile(const char * filename)
 
 - (BOOL) allDownloaded
 {
-    return [self progressDone] >= 1.0;
+    return [self sizeLeft] == 0;
 }
 
 - (BOOL) isComplete
