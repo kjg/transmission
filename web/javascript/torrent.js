@@ -109,11 +109,7 @@ Torrent.prototype =
 
 	initializeTorrentFilesInspectorGroup: function() {
 		this._files = [];
-		this._fileList = $('<ul/>').addClass('inspector_torrent_file_list').addClass('inspector_group').hide().
-			append($('<li/>').addClass('inspector_group_label').append(
-				$('<div/>').append(this.name())
-			)
-		);
+		this._fileList = $('<ul/>').addClass('inspector_torrent_file_list').addClass('inspector_group').hide();
 		$('#inspector_file_list').append(this._fileList);
 	},
 
