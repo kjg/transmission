@@ -136,7 +136,7 @@ tr_torrentUseSpeedLimit( tr_torrent * tor, tr_direction dir, tr_bool do_use )
 }
 
 tr_bool
-tr_torrentIsUsingSpeedLimit( const tr_torrent * tor, tr_direction dir )
+tr_torrentUsesSpeedLimit( const tr_torrent * tor, tr_direction dir )
 {
     assert( tr_isTorrent( tor ) );
     assert( tr_isDirection( dir ) );
@@ -145,21 +145,20 @@ tr_torrentIsUsingSpeedLimit( const tr_torrent * tor, tr_direction dir )
 }
 
 void
-tr_torrentUseGlobalSpeedLimit( tr_torrent * tor, tr_direction dir, tr_bool do_use )
+tr_torrentUseSessionLimits( tr_torrent * tor, tr_bool doUse )
 {
     assert( tr_isTorrent( tor ) );
-    assert( tr_isDirection( dir ) );
 
-    tr_bandwidthHonorParentLimits( tor->bandwidth, dir, do_use );
+    tr_bandwidthHonorParentLimits( tor->bandwidth, TR_UP, doUse );
+    tr_bandwidthHonorParentLimits( tor->bandwidth, TR_DOWN, doUse );
 }
 
 tr_bool
-tr_torrentIsUsingGlobalSpeedLimit( const tr_torrent * tor, tr_direction dir )
+tr_torrentUsesSessionLimits( const tr_torrent * tor )
 {
     assert( tr_isTorrent( tor ) );
-    assert( tr_isDirection( dir ) );
 
-    return tr_bandwidthAreParentLimitsHonored( tor->bandwidth, dir );
+    return tr_bandwidthAreParentLimitsHonored( tor->bandwidth, TR_UP );
 }
 
 /***
@@ -208,15 +207,16 @@ tr_bool
 tr_torrentIsPieceTransferAllowed( const tr_torrent  * tor,
                                   tr_direction        direction )
 {
+    int limit;
     tr_bool allowed = TRUE;
 
-    if( tr_torrentIsUsingSpeedLimit( tor, direction ) )
+    if( tr_torrentUsesSpeedLimit( tor, direction ) )
         if( tr_torrentGetSpeedLimit( tor, direction ) <= 0 )
             allowed = FALSE;
 
-    if( tr_torrentIsUsingGlobalSpeedLimit( tor, direction ) )
-        if( tr_sessionIsSpeedLimitEnabled( tor->session, direction ) )
-            if( tr_sessionGetSpeedLimit( tor->session, direction ) <= 0 )
+    if( tr_torrentUsesSessionLimits( tor ) )
+        if( tr_sessionGetActiveSpeedLimit( tor->session, direction, &limit ) )
+            if( limit <= 0 )
                 allowed = FALSE;
 
     return allowed;
@@ -594,10 +594,9 @@ torrentRealInit( tr_session      * session,
 
     if( !( loaded & TR_FR_SPEEDLIMIT ) )
     {
-        tr_torrentSetSpeedLimit( tor, TR_UP,
-                                tr_sessionGetSpeedLimit( tor->session, TR_UP ) );
-        tr_torrentSetSpeedLimit( tor, TR_DOWN,
-                                tr_sessionGetSpeedLimit( tor->session, TR_DOWN ) );
+        tr_torrentUseSpeedLimit( tor, TR_UP, FALSE );
+        tr_torrentUseSpeedLimit( tor, TR_DOWN, FALSE );
+        tr_torrentUseSessionLimits( tor, TRUE );
     }
 
     if( !( loaded & TR_FR_RATIOLIMIT ) )
@@ -757,7 +756,7 @@ tr_torrentManualUpdate( tr_torrent * tor )
     tr_runInEventThread( tor->session, tr_torrentManualUpdateImpl, tor );
 }
 
-int
+tr_bool
 tr_torrentCanManualUpdate( const tr_torrent * tor )
 {
     return ( tr_isTorrent( tor  ) )
@@ -779,6 +778,16 @@ tr_torrentStatCached( tr_torrent * tor )
     return tr_isTorrent( tor ) && ( now == tor->lastStatTime )
          ? &tor->stats
          : tr_torrentStat( tor );
+}
+
+void
+tr_torrentSetVerifyState( tr_torrent * tor, tr_verify_state state )
+{
+    assert( tr_isTorrent( tor ) );
+    assert( state==TR_VERIFY_NONE || state==TR_VERIFY_WAIT || state==TR_VERIFY_NOW );
+
+    tor->verifyState = state;
+    tor->anyDate = time( NULL );
 }
 
 tr_torrent_activity
@@ -1180,7 +1189,7 @@ checkAndStartImpl( void * vtor )
     tr_torrentResetTransferStats( tor );
     tor->completeness = tr_cpGetStatus( &tor->completion );
     tr_torrentSaveResume( tor );
-    tor->startDate = time( NULL );
+    tor->startDate = tor->anyDate = time( NULL );
     tr_trackerStart( tor->tracker );
     tr_peerMgrStartTorrent( tor );
     tr_torrentCheckSeedRatio( tor );
@@ -1455,7 +1464,7 @@ tr_torrentRecheckCompleteness( tr_torrent * tor )
         {
             tr_trackerCompleted( tor->tracker );
 
-            tor->doneDate = time( NULL );
+            tor->doneDate = tor->anyDate = time( NULL );
         }
 
         tr_torrentSaveResume( tor );
@@ -1917,6 +1926,9 @@ tr_torrentSetActivityDate( tr_torrent * tor,
     assert( tr_isTorrent( tor ) );
 
     tor->activityDate = t;
+
+    if( tor->anyDate < tor->activityDate )
+        tor->anyDate = tor->activityDate;
 }
 
 /** @deprecated this method will be removed in 1.40 */
@@ -1927,6 +1939,9 @@ tr_torrentSetDoneDate( tr_torrent * tor,
     assert( tr_isTorrent( tor ) );
 
     tor->doneDate = t;
+
+    if( tor->anyDate < tor->doneDate )
+        tor->anyDate = tor->doneDate;
 }
 
 /**

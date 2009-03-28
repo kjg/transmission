@@ -68,8 +68,21 @@ struct tr_session
     tr_bool                      useLazyBitfield;
     tr_bool                      isRatioLimited;
 
-    tr_bool                      isSpeedLimited[2];
+    
     int                          speedLimit[2];
+    tr_bool                      speedLimitEnabled[2];
+
+    int                          altSpeed[2];
+    tr_bool                      altSpeedEnabled;
+
+    int                          altSpeedTimeBegin;
+    int                          altSpeedTimeEnd;
+    tr_bool                      altSpeedTimeEnabled;
+
+    tr_altSpeedFunc            * altCallback;
+    void                       * altCallbackUserData;
+
+
     int                          magicNumber;
 
     tr_encryption_mode           encryptionMode;
@@ -122,6 +135,8 @@ struct tr_session
     struct tr_metainfo_lookup *  metainfoLookup;
     int                          metainfoLookupCount;
 
+    struct event               * altTimer;
+
     /* the size of the output buffer for peer connections */
     int so_sndbuf;
 
@@ -133,6 +148,10 @@ struct tr_session
 
     double                       desiredRatio;
 };
+
+tr_bool      tr_sessionGetActiveSpeedLimit( const tr_session  * session,
+                                            tr_direction        dir,
+                                            int               * setme );
 
 const char * tr_sessionFindTorrentFile( const tr_session * session,
                                         const char *       hashString );

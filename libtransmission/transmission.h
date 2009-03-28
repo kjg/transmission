@@ -151,6 +151,12 @@ static TR_INLINE tr_bool tr_isEncryptionMode( tr_encryption_mode m )
 #define TR_DEFAULT_PEER_LIMIT_GLOBAL_STR "240"
 #define TR_DEFAULT_PEER_LIMIT_TORRENT_STR "60"
 
+#define TR_PREFS_KEY_ALT_SPEED_ENABLED          "alt-speed-enabled"
+#define TR_PREFS_KEY_ALT_SPEED_UP               "alt-speed-up"
+#define TR_PREFS_KEY_ALT_SPEED_DOWN             "alt-speed-down"
+#define TR_PREFS_KEY_ALT_SPEED_TIME_BEGIN       "alt-speed-time-begin"
+#define TR_PREFS_KEY_ALT_SPEED_TIME_ENABLED     "alt-speed-time-enabled"
+#define TR_PREFS_KEY_ALT_SPEED_TIME_END         "alt-speed-time-end"
 #define TR_PREFS_KEY_BLOCKLIST_ENABLED          "blocklist-enabled"
 #define TR_PREFS_KEY_DOWNLOAD_DIR               "download-dir"
 #define TR_PREFS_KEY_DSPEED                     "download-limit"
@@ -230,9 +236,9 @@ void tr_sessionGetSettings( tr_session *, struct tr_benc * dictionary );
  *
  * FIXME: this belongs in libtransmissionapp
  *
+ * @param dictionary pointer to an uninitialized tr_benc
  * @param configDir the configuration directory to find settings.json
- * @param initme pointer to an uninitialized tr_benc
- * @param appName examples: Transmission, transmission-daemon
+ * @param appName if configDir is empty, appName is used to get the default config dir.
  * @see tr_sessionGetDefaultSettings()
  * @see tr_sessionInit()
  * @see tr_sessionSaveSettings()
@@ -251,9 +257,9 @@ void tr_sessionLoadSettings( struct tr_benc  * dictionary,
  * @param dictionary
  * @see tr_sessionLoadSettings()
  */
-void tr_sessionSaveSettings( tr_session     * session,
-                             const char     * configDir,
-                             struct tr_benc * dictonary );
+void tr_sessionSaveSettings( tr_session           * session,
+                             const char           * configDir,
+                             const struct tr_benc * dictonary );
 
 /**
  * Initialize a libtransmission session.
@@ -369,6 +375,12 @@ void  tr_sessionSetRPCPassword( tr_session * session,
 
 void  tr_sessionSetRPCUsername( tr_session * session,
                                 const char * username );
+
+/** @brief get the password used to restrict RPC requests.
+    @return the password string. tr_free() when done.
+    @see tr_sessionInit()
+    @see tr_sessionSetRPCPassword() */
+char* tr_sessionGetRPCPassword( const tr_session * session );
 
 char* tr_sessionGetRPCUsername( const tr_session * session  );
 
@@ -542,48 +554,63 @@ typedef enum
 }
 tr_direction;
 
-void       tr_sessionSetSpeedLimitEnabled ( tr_session        * session,
-                                            tr_direction        direction,
-                                            tr_bool             isEnabled );
+/***
+****
+***/
 
-tr_bool    tr_sessionIsSpeedLimitEnabled  ( const tr_session  * session,
-                                            tr_direction        direction );
+/***
+****  Primary session speed limits
+***/
 
-void       tr_sessionSetSpeedLimit        ( tr_session        * session,
-                                            tr_direction        direction,
-                                            int                 KiB_sec );
+void     tr_sessionSetSpeedLimit      ( tr_session *, tr_direction, int KB_s );
+int      tr_sessionGetSpeedLimit      ( const tr_session *, tr_direction );
 
-int        tr_sessionGetSpeedLimit        ( const tr_session  * session,
-                                            tr_direction        direction );
-
-void       tr_sessionSetRatioLimited      ( tr_session        * session,
-                                            tr_bool             isEnabled );
-
-tr_bool    tr_sessionIsRatioLimited       ( const tr_session  * session);
-
-void       tr_sessionSetRatioLimit        ( tr_session        * session,
-                                            double              desiredRatio);
-
-double     tr_sessionGetRatioLimit        ( const tr_session  * session);
-
-tr_bool    tr_torrentGetSeedRatio         ( const tr_torrent * tor, double * ratio );
-
-double     tr_sessionGetRawSpeed          ( const tr_session  * session,
-                                           tr_direction         direction );
-
-double     tr_sessionGetPieceSpeed        ( const tr_session  * session,
-                                            tr_direction        direction );
+void     tr_sessionLimitSpeed         ( tr_session *, tr_direction, tr_bool );
+tr_bool  tr_sessionIsSpeedLimited     ( const tr_session *, tr_direction );
 
 
-void       tr_sessionSetPeerLimit( tr_session  * session,
-                                   uint16_t      maxGlobalPeers );
+/***
+****  Alternative speed limits that are used during scheduled times 
+***/
 
-uint16_t   tr_sessionGetPeerLimit( const tr_session * session );
+void     tr_sessionSetAltSpeed        ( tr_session *, tr_direction, int KB_s );
+int      tr_sessionGetAltSpeed        ( const tr_session *, tr_direction );
 
-void       tr_sessionSetPeerLimitPerTorrent( tr_session  * session,
-                                             uint16_t      maxGlobalPeers );
+void     tr_sessionUseAltSpeed        ( tr_session *, tr_bool );
+tr_bool  tr_sessionUsesAltSpeed       ( const tr_session * );
 
-uint16_t   tr_sessionGetPeerLimitPerTorrent( const tr_session * session );
+void     tr_sessionUseAltSpeedTime    ( tr_session *, tr_bool );
+tr_bool  tr_sessionUsesAltSpeedTime   ( const tr_session * );
+
+void     tr_sessionSetAltSpeedBegin   ( tr_session *, int minsSinceMidnight );
+int      tr_sessionGetAltSpeedBegin   ( const tr_session * );
+
+void     tr_sessionSetAltSpeedEnd     ( tr_session *, int minsSinceMidnight );
+int      tr_sessionGetAltSpeedEnd     ( const tr_session * );
+
+typedef void ( tr_altSpeedFunc )      ( tr_session *, tr_bool active, void * );
+void     tr_sessionClearAltSpeedFunc  ( tr_session * );
+void     tr_sessionSetAltSpeedFunc    ( tr_session *, tr_altSpeedFunc *, void * );
+
+/***
+****
+***/
+
+double     tr_sessionGetRawSpeed      ( const tr_session *, tr_direction );
+double     tr_sessionGetPieceSpeed    ( const tr_session *, tr_direction );
+
+
+void       tr_sessionSetRatioLimited  ( tr_session *, tr_bool isLimited );
+tr_bool    tr_sessionIsRatioLimited   ( const tr_session * );
+
+void       tr_sessionSetRatioLimit    ( tr_session *, double desiredRatio );
+double     tr_sessionGetRatioLimit    ( const tr_session * );
+
+void       tr_sessionSetPeerLimit( tr_session *, uint16_t maxGlobalPeers );
+uint16_t   tr_sessionGetPeerLimit( const tr_session * );
+
+void       tr_sessionSetPeerLimitPerTorrent( tr_session *, uint16_t maxGlobalPeers );
+uint16_t   tr_sessionGetPeerLimitPerTorrent( const tr_session * );
 
 
 /**
@@ -862,21 +889,20 @@ uint64_t tr_torrentGetBytesLeftToAllocate( const tr_torrent * torrent );
  */
 int tr_torrentId( const tr_torrent * torrent );
 
-/****
-*****  Speed Limits
-****/
+/***
+****  Torrent speed limits
+****
+***/
 
-void     tr_torrentSetSpeedLimit( tr_torrent *, tr_direction, int KiB_sec );
+void     tr_torrentSetSpeedLimit      ( tr_torrent *, tr_direction, int KB_s );
+int      tr_torrentGetSpeedLimit      ( const tr_torrent *, tr_direction );
 
-int      tr_torrentGetSpeedLimit( const tr_torrent *, tr_direction );
+void     tr_torrentUseSpeedLimit      ( tr_torrent *, tr_direction, tr_bool );
+tr_bool  tr_torrentUsesSpeedLimit     ( const tr_torrent *, tr_direction );
 
-void     tr_torrentUseSpeedLimit( tr_torrent *, tr_direction, tr_bool do_use );
+void     tr_torrentUseSessionLimits   ( tr_torrent *, tr_bool );
+tr_bool  tr_torrentUsesSessionLimits  ( const tr_torrent * );
 
-tr_bool  tr_torrentIsUsingSpeedLimit( const tr_torrent *, tr_direction );
-
-void     tr_torrentUseGlobalSpeedLimit( tr_torrent *, tr_direction, tr_bool do_use );
-
-tr_bool  tr_torrentIsUsingGlobalSpeedLimit ( const tr_torrent *, tr_direction );
 
 /****
 *****  Ratio Limits
@@ -899,6 +925,9 @@ void          tr_torrentSetRatioLimit( tr_torrent        * tor,
                                        double              ratio );
 
 double        tr_torrentGetRatioLimit( const tr_torrent  * tor );
+
+
+tr_bool       tr_torrentGetSeedRatio( const tr_torrent *, double * ratio );
 
 /****
 *****  Peer Limits
@@ -1068,7 +1097,7 @@ void tr_torrentClearRatioLimitHitCallback( tr_torrent * torrent );
 
 void tr_torrentManualUpdate( tr_torrent * torrent );
 
-int  tr_torrentCanManualUpdate( const tr_torrent * torrent );
+tr_bool tr_torrentCanManualUpdate( const tr_torrent * torrent );
 
 /***********************************************************************
 * tr_torrentPeers

@@ -13,9 +13,17 @@
 #ifndef TR_RPC_H
 #define TR_RPC_H
 
+#ifdef __cplusplus
+extern "C" {
+#endif
+
 /***
 ****  RPC processing
 ***/
+
+#ifdef __cplusplus
+extern "C" {
+#endif
 
 struct tr_benc;
 
@@ -41,5 +49,12 @@ void tr_rpc_parse_list_str( struct tr_benc * setme,
                             const char     * list_str,
                             int              list_str_len );
 
-
+#ifdef __cplusplus
+}
 #endif
+
+#ifdef __cplusplus
+}
+#endif
+
+#endif /* TR_RPC_H */

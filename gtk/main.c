@@ -436,6 +436,7 @@ main( int     argc,
 
         /* initialize the libtransmission session */
         session = tr_sessionInit( "gtk", configDir, TRUE, pref_get_all( ) );
+        pref_flag_set( TR_PREFS_KEY_ALT_SPEED_ENABLED, tr_sessionUsesAltSpeed( session ) );
         cbdata->core = tr_core_new( session );
 
         /* create main window now to be a parent to any error dialogs */
@@ -457,96 +458,6 @@ main( int     argc,
     }
 
     return 0;
-}
-
-static gboolean
-updateScheduledLimits( gpointer data )
-{
-    tr_session *    tr = data;
-    static gboolean last_state = FALSE;
-    gboolean        in_sched_state = FALSE;
-
-    if( !pref_flag_get( PREF_KEY_SCHED_LIMIT_ENABLED ) )
-    {
-        in_sched_state = FALSE;
-    }
-    else
-    {
-        const int  begin_time = pref_int_get( PREF_KEY_SCHED_BEGIN );
-        const int  end_time = pref_int_get( PREF_KEY_SCHED_END );
-        time_t     t;
-        struct tm *tm;
-        int        cur_time;
-
-        time( &t );
-        tm = localtime ( &t );
-        cur_time = ( tm->tm_hour * 60 ) + tm->tm_min;
-
-        if( end_time >= begin_time )
-        {
-            if( ( cur_time >= begin_time ) && ( cur_time <= end_time ) )
-                in_sched_state = TRUE;
-        }
-        else
-        {
-            if( ( cur_time >= begin_time ) || ( cur_time <= end_time ) )
-                in_sched_state = TRUE;
-        }
-    }
-
-    if( last_state != in_sched_state )
-    {
-        if( in_sched_state )
-        {
-            int limit;
-
-            tr_inf ( _( "Beginning to use scheduled bandwidth limits" ) );
-
-            tr_sessionSetSpeedLimitEnabled( tr, TR_DOWN, TRUE );
-            limit = pref_int_get( PREF_KEY_SCHED_DL_LIMIT );
-            tr_sessionSetSpeedLimit( tr, TR_DOWN, limit );
-            tr_sessionSetSpeedLimitEnabled( tr, TR_UP, TRUE );
-            limit = pref_int_get( PREF_KEY_SCHED_UL_LIMIT );
-            tr_sessionSetSpeedLimit( tr, TR_UP, limit );
-        }
-        else
-        {
-            gboolean b;
-            int      limit;
-
-            tr_inf ( _( "Ending use of scheduled bandwidth limits" ) );
-
-            b = pref_flag_get( TR_PREFS_KEY_DSPEED_ENABLED );
-            tr_sessionSetSpeedLimitEnabled( tr, TR_DOWN, b );
-            limit = pref_int_get( TR_PREFS_KEY_DSPEED );
-            tr_sessionSetSpeedLimit( tr, TR_DOWN, limit );
-            b = pref_flag_get( TR_PREFS_KEY_USPEED_ENABLED );
-            tr_sessionSetSpeedLimitEnabled( tr, TR_UP, b );
-            limit = pref_int_get( TR_PREFS_KEY_USPEED );
-            tr_sessionSetSpeedLimit( tr, TR_UP, limit );
-        }
-
-        last_state = in_sched_state;
-    }
-    else if( in_sched_state )
-    {
-        static int old_dl_limit = 0, old_ul_limit = 0;
-        int        dl_limit = pref_int_get( PREF_KEY_SCHED_DL_LIMIT );
-        int        ul_limit = pref_int_get( PREF_KEY_SCHED_UL_LIMIT );
-
-        if( ( dl_limit != old_dl_limit ) || ( ul_limit != old_ul_limit ) )
-        {
-            tr_sessionSetSpeedLimitEnabled( tr, TR_DOWN, TRUE );
-            tr_sessionSetSpeedLimit( tr, TR_DOWN, dl_limit );
-            tr_sessionSetSpeedLimitEnabled( tr, TR_UP, TRUE );
-            tr_sessionSetSpeedLimit( tr, TR_UP, ul_limit );
-
-            old_dl_limit = dl_limit;
-            old_ul_limit = ul_limit;
-        }
-    }
-
-    return TRUE;
 }
 
 static void
@@ -600,10 +511,6 @@ appsetup( TrWindow *      wind,
     /* start model update timer */
     cbdata->timer = gtr_timeout_add_seconds( REFRESH_INTERVAL_SECONDS, updatemodel, cbdata );
     updatemodel( cbdata );
-
-    /* start scheduled rate timer */
-    updateScheduledLimits ( tr_core_session( cbdata->core ) );
-    gtr_timeout_add_seconds( 60, updateScheduledLimits, tr_core_session( cbdata->core ) );
 
     /* either show the window or iconify it */
     if( !isIconified )
@@ -1038,58 +945,45 @@ prefschanged( TrCore * core UNUSED,
     }
     else if( !strcmp( key, TR_PREFS_KEY_PEER_PORT ) )
     {
-        const int port = pref_int_get( key );
-        tr_sessionSetPeerPort( tr, port );
+        tr_sessionSetPeerPort( tr, pref_int_get( key ) );
     }
     else if( !strcmp( key, TR_PREFS_KEY_BLOCKLIST_ENABLED ) )
     {
-        const gboolean flag = pref_flag_get( key );
-        tr_blocklistSetEnabled( tr, flag );
+        tr_blocklistSetEnabled( tr, pref_flag_get( key ) );
     }
     else if( !strcmp( key, PREF_KEY_SHOW_TRAY_ICON ) )
     {
         const int show = pref_flag_get( key );
         if( show && !cbdata->icon )
             cbdata->icon = tr_icon_new( cbdata->core );
-        else if( !show && cbdata->icon )
-        {
+        else if( !show && cbdata->icon ) {
             g_object_unref( cbdata->icon );
             cbdata->icon = NULL;
         }
     }
     else if( !strcmp( key, TR_PREFS_KEY_DSPEED_ENABLED ) )
     {
-        const gboolean b = pref_flag_get( key );
-        tr_sessionSetSpeedLimitEnabled( tr, TR_DOWN, b );
+        tr_sessionLimitSpeed( tr, TR_DOWN, pref_flag_get( key ) );
     }
     else if( !strcmp( key, TR_PREFS_KEY_DSPEED ) )
     {
-        const int limit = pref_int_get( key );
-        tr_sessionSetSpeedLimit( tr, TR_DOWN, limit );
+        tr_sessionSetSpeedLimit( tr, TR_DOWN, pref_int_get( key ) );
     }
     else if( !strcmp( key, TR_PREFS_KEY_USPEED_ENABLED ) )
     {
-        const gboolean b = pref_flag_get( key );
-        tr_sessionSetSpeedLimitEnabled( tr, TR_UP, b );
+        tr_sessionLimitSpeed( tr, TR_UP, pref_flag_get( key ) );
     }
     else if( !strcmp( key, TR_PREFS_KEY_USPEED ) )
     {
-        const int limit = pref_int_get( key );
-        tr_sessionSetSpeedLimit( tr, TR_UP, limit );
+        tr_sessionSetSpeedLimit( tr, TR_UP, pref_int_get( key ) );
     }
     else if( !strcmp( key, TR_PREFS_KEY_RATIO_ENABLED ) )
     {
-        const gboolean b = pref_flag_get( key );
-        tr_sessionSetRatioLimited( tr, b );
+        tr_sessionSetRatioLimited( tr, pref_flag_get( key ) );
     }
     else if( !strcmp( key, TR_PREFS_KEY_RATIO ) )
     {
-        const double limit = pref_double_get( key );
-        tr_sessionSetRatioLimit( tr, limit );
-    }
-    else if( !strncmp( key, "sched-", 6 ) )
-    {
-        updateScheduledLimits( tr );
+        tr_sessionSetRatioLimit( tr, pref_double_get( key ) );
     }
     else if( !strcmp( key, TR_PREFS_KEY_PORT_FORWARDING ) )
     {
@@ -1109,8 +1003,7 @@ prefschanged( TrCore * core UNUSED,
     }
     else if( !strcmp( key, TR_PREFS_KEY_RPC_WHITELIST ) )
     {
-        const char * s = pref_string_get( key );
-        tr_sessionSetRPCWhitelist( tr, s );
+        tr_sessionSetRPCWhitelist( tr, pref_string_get( key ) );
     }
     else if( !strcmp( key, TR_PREFS_KEY_RPC_WHITELIST_ENABLED ) )
     {
@@ -1118,57 +1011,67 @@ prefschanged( TrCore * core UNUSED,
     }
     else if( !strcmp( key, TR_PREFS_KEY_RPC_USERNAME ) )
     {
-        const char * s = pref_string_get( key );
-        tr_sessionSetRPCUsername( tr, s );
+        tr_sessionSetRPCUsername( tr, pref_string_get( key ) );
     }
     else if( !strcmp( key, TR_PREFS_KEY_RPC_PASSWORD ) )
     {
-        const char * s = pref_string_get( key );
-        tr_sessionSetRPCPassword( tr, s );
+        tr_sessionSetRPCPassword( tr, pref_string_get( key ) );
     }
     else if( !strcmp( key, TR_PREFS_KEY_RPC_AUTH_REQUIRED ) )
     {
-        const gboolean enabled = pref_flag_get( key );
-        tr_sessionSetRPCPasswordEnabled( tr, enabled );
+        tr_sessionSetRPCPasswordEnabled( tr, pref_flag_get( key ) );
     }
     else if( !strcmp( key, TR_PREFS_KEY_PROXY ) )
     {
-        const char * s = pref_string_get( key );
-        tr_sessionSetProxy( tr, s );
+        tr_sessionSetProxy( tr, pref_string_get( key ) );
     }
     else if( !strcmp( key, TR_PREFS_KEY_PROXY_TYPE ) )
     {
-        const int i = pref_int_get( key );
-        tr_sessionSetProxyType( tr, i );
+        tr_sessionSetProxyType( tr, pref_int_get( key ) );
     }
     else if( !strcmp( key, TR_PREFS_KEY_PROXY_ENABLED ) )
     {
-        const gboolean enabled = pref_flag_get( key );
-        tr_sessionSetProxyEnabled( tr, enabled );
+        tr_sessionSetProxyEnabled( tr, pref_flag_get( key ) );
     }
     else if( !strcmp( key, TR_PREFS_KEY_PROXY_AUTH_ENABLED ) )
     {
-        const gboolean enabled = pref_flag_get( key );
-        tr_sessionSetProxyAuthEnabled( tr, enabled );
+        tr_sessionSetProxyAuthEnabled( tr, pref_flag_get( key ) );
     }
     else if( !strcmp( key, TR_PREFS_KEY_PROXY_USERNAME ) )
     {
-        const char * s = pref_string_get( key );
-        tr_sessionSetProxyUsername( tr, s );
+        tr_sessionSetProxyUsername( tr, pref_string_get( key ) );
     }
     else if( !strcmp( key, TR_PREFS_KEY_PROXY_PASSWORD ) )
     {
-        const char * s = pref_string_get( key );
-        tr_sessionSetProxyPassword( tr, s );
+        tr_sessionSetProxyPassword( tr, pref_string_get( key ) );
     }
     else if( !strcmp( key, TR_PREFS_KEY_PROXY_PORT ) )
     {
         tr_sessionSetProxyPort( tr, pref_int_get( key ) );
     }
-    else if( !strcmp( key, TR_PREFS_KEY_RPC_PASSWORD ) )
+    else if( !strcmp( key, TR_PREFS_KEY_ALT_SPEED_UP ) )
     {
-        const char * s = pref_string_get( key );
-        tr_sessionSetProxyPassword( tr, s );
+        tr_sessionSetAltSpeed( tr, TR_UP, pref_int_get( key ) );
+    }
+    else if( !strcmp( key, TR_PREFS_KEY_ALT_SPEED_DOWN ) )
+    {
+        tr_sessionSetAltSpeed( tr, TR_DOWN, pref_int_get( key ) );
+    }
+    else if( !strcmp( key, TR_PREFS_KEY_ALT_SPEED_ENABLED ) )
+    {
+        tr_sessionUseAltSpeed( tr, pref_flag_get( key ) );
+    }
+    else if( !strcmp( key, TR_PREFS_KEY_ALT_SPEED_TIME_BEGIN ) )
+    {
+        tr_sessionSetAltSpeedBegin( tr, pref_int_get( key ) );
+    }
+    else if( !strcmp( key, TR_PREFS_KEY_ALT_SPEED_TIME_END ) )
+    {
+        tr_sessionSetAltSpeedEnd( tr, pref_int_get( key ) );
+    }
+    else if( !strcmp( key, TR_PREFS_KEY_ALT_SPEED_TIME_ENABLED ) )
+    {
+        tr_sessionUseAltSpeedTime( tr, pref_flag_get( key ) );
     }
 }
 
