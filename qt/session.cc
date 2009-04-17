@@ -24,6 +24,7 @@
 
 #include <libtransmission/transmission.h>
 #include <libtransmission/bencode.h>
+#include <libtransmission/json.h>
 #include <libtransmission/rpcimpl.h>
 #include <libtransmission/utils.h> /* tr_free */
 #include <libtransmission/version.h> /* LONG_VERSION */
@@ -130,6 +131,8 @@ Session :: updatePref( int key )
         case Prefs :: PORT_FORWARDING:
         case Prefs :: PEER_PORT:
         case Prefs :: PEER_PORT_RANDOM_ON_START:
+        case Prefs :: RATIO:
+        case Prefs :: RATIO_ENABLED:
             sessionSet( myPrefs.keyStr(key), myPrefs.variant(key) );
             break;
 
