@@ -175,6 +175,8 @@ Details :: setIds( const QSet<int>& ids )
             disconnect( tor, SIGNAL(torrentChanged(int)), this, SLOT(onTorrentChanged()) );
     }
 
+    myFileTreeView->clear( );
+
     myIds = ids;
 
     // listen to the new torrents
@@ -509,11 +511,11 @@ Details :: refresh( )
         myBandwidthPriorityCombo->blockSignals( false );
 
         mySingleDownSpin->blockSignals( true );
-        mySingleDownSpin->setValue( tor->downloadLimit().kbps() );
+        mySingleDownSpin->setValue( int(tor->downloadLimit().kbps()) );
         mySingleDownSpin->blockSignals( false );
 
         mySingleUpSpin->blockSignals( true );
-        mySingleUpSpin->setValue( tor->uploadLimit().kbps() );
+        mySingleUpSpin->setValue( int(tor->uploadLimit().kbps()) );
         mySingleUpSpin->blockSignals( false );
 
         myPeerLimitSpin->blockSignals( true );
