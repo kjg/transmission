@@ -32,7 +32,7 @@
 enum
 {
    GUI_PAD = 6,
-   BAR_HEIGHT = 12
+   BAR_HEIGHT = 20
 };
 
 TorrentDelegate :: TorrentDelegate( QObject * parent ):
