@@ -32,7 +32,7 @@
 enum
 {
    GUI_PAD = 6,
-   BAR_HEIGHT = 20
+   BAR_HEIGHT = 12
 };
 
 TorrentDelegate :: TorrentDelegate( QObject * parent ):
@@ -364,7 +364,7 @@ TorrentDelegate :: drawTorrent( QPainter * painter, const QStyleOptionViewItem& 
     myProgressBarStyle->direction = option.direction;
     myProgressBarStyle->palette = option.palette;
     myProgressBarStyle->palette.setCurrentColorGroup( QPalette::Active );
-    myProgressBarStyle->state = option.state;
+    myProgressBarStyle->state = option.state | QStyle::State_Small;
     myProgressBarStyle->progress = int(myProgressBarStyle->minimum + ((tor.percentDone() * (myProgressBarStyle->maximum - myProgressBarStyle->minimum))));
     style->drawControl( QStyle::CE_ProgressBar, myProgressBarStyle, painter );
 
