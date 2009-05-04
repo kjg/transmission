@@ -364,7 +364,7 @@ TorrentDelegate :: drawTorrent( QPainter * painter, const QStyleOptionViewItem& 
     myProgressBarStyle->direction = option.direction;
     myProgressBarStyle->palette = option.palette;
     myProgressBarStyle->palette.setCurrentColorGroup( QPalette::Active );
-    myProgressBarStyle->state = QStyle::State_Off;
+    myProgressBarStyle->state = option.state;
     myProgressBarStyle->progress = int(myProgressBarStyle->minimum + ((tor.percentDone() * (myProgressBarStyle->maximum - myProgressBarStyle->minimum))));
     style->drawControl( QStyle::CE_ProgressBar, myProgressBarStyle, painter );
 
