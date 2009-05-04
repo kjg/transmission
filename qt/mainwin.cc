@@ -36,6 +36,7 @@
 #include "prefs.h"
 #include "prefs-dialog.h"
 #include "session.h"
+#include "session-dialog.h"
 #include "speed.h"
 #include "stats-dialog.h"
 #include "torrent-delegate.h"
@@ -78,6 +79,7 @@ namespace
 
 TrMainWindow :: TrMainWindow( Session& session, Prefs& prefs, TorrentModel& model, bool minimized ):
     myLastFullUpdateTime( 0 ),
+    mySessionDialog( new SessionDialog( session, prefs, this ) ),
     myPrefsDialog( new PrefsDialog( session, prefs, this ) ),
     myAboutDialog( new AboutDialog( this ) ),
     myStatsDialog( new StatsDialog( session, this ) ),
@@ -99,12 +101,6 @@ TrMainWindow :: TrMainWindow( Session& session, Prefs& prefs, TorrentModel& mode
     sep->setSeparator( true );
 
     ui.setupUi( this );
-
-    QString title( "Transmission" );
-    const QUrl remoteUrl( session.getRemoteUrl( ) );
-    if( !remoteUrl.isEmpty( ) )
-        title += tr( " - %1" ).arg( remoteUrl.toString(QUrl::RemoveUserInfo) );
-    setWindowTitle( title );
 
     QStyle * style = this->style();
 
@@ -162,6 +158,7 @@ TrMainWindow :: TrMainWindow( Session& session, Prefs& prefs, TorrentModel& mode
     connect( ui.action_Contents, SIGNAL(triggered()), this, SLOT(openHelp()));
     connect( ui.action_OpenFolder, SIGNAL(triggered()), this, SLOT(openFolder()));
     connect( ui.action_Properties, SIGNAL(triggered()), this, SLOT(openProperties()));
+    connect( ui.action_SessionDialog, SIGNAL(triggered()), mySessionDialog, SLOT(show()));
     connect( ui.listView, SIGNAL(activated(const QModelIndex&)), ui.action_Properties, SLOT(trigger()));
 
     // context menu
@@ -192,6 +189,9 @@ TrMainWindow :: TrMainWindow( Session& session, Prefs& prefs, TorrentModel& mode
 
     // torrent view
     myFilterModel.setSourceModel( &myModel );
+    connect( &myModel, SIGNAL(modelReset()), this, SLOT(onModelReset()));
+    connect( &myModel, SIGNAL(rowsRemoved(const QModelIndex&,int,int)), this, SLOT(onModelReset()));
+    connect( &myModel, SIGNAL(rowsInserted(const QModelIndex&,int,int)), this, SLOT(onModelReset()));
     ui.listView->setModel( &myFilterModel );
     connect( ui.listView->selectionModel(), SIGNAL(selectionChanged(const QItemSelection&,const QItemSelection&)), this, SLOT(refreshActionSensitivity()));
 
@@ -252,9 +252,11 @@ TrMainWindow :: TrMainWindow( Session& session, Prefs& prefs, TorrentModel& mode
     foreach( int key, initKeys )
         refreshPref( key );
 
+    connect( &mySession, SIGNAL(sourceChanged()), this, SLOT(onSessionSourceChanged()) );
     connect( &mySession, SIGNAL(statsUpdated()), this, SLOT(refreshStatusBar()) );
     connect( &mySession, SIGNAL(dataReadProgress()), this, SLOT(dataReadProgress()) );
     connect( &mySession, SIGNAL(dataSendProgress()), this, SLOT(dataSendProgress()) );
+    connect( &mySession, SIGNAL(httpAuthenticationRequired()), this, SLOT(wrongAuthentication()) );
 
     if( mySession.isServer( ) )
         myNetworkLabel->hide( );
@@ -265,11 +267,31 @@ TrMainWindow :: TrMainWindow( Session& session, Prefs& prefs, TorrentModel& mode
 
     refreshActionSensitivity( );
     refreshStatusBar( );
+    refreshTitle( );
     refreshVisibleCount( );
 }
 
 TrMainWindow :: ~TrMainWindow( )
 {
+}
+
+/****
+*****
+****/
+
+void
+TrMainWindow :: onSessionSourceChanged( )
+{
+    myModel.clear( );
+}
+
+void
+TrMainWindow :: onModelReset( )
+{
+    refreshTitle( );
+    refreshVisibleCount( );
+    refreshActionSensitivity( );
+    refreshStatusBar( );
 }
 
 /****
@@ -597,6 +619,16 @@ TrMainWindow :: openHelp( )
 }
 
 void
+TrMainWindow :: refreshTitle( )
+{
+    QString title( "Transmission" );
+    const QUrl url( mySession.getRemoteUrl( ) );
+    if( !url.isEmpty() )
+        title += tr( " - %1" ).arg( url.toString(QUrl::RemoveUserInfo) );
+    setWindowTitle( title );
+}
+
+void
 TrMainWindow :: refreshVisibleCount( )
 {
     const int visibleCount( myFilterModel.rowCount( ) );
@@ -723,22 +755,22 @@ TrMainWindow :: getSelectedTorrents( ) const
 void
 TrMainWindow :: startSelected( )
 {
-    mySession.start( getSelectedTorrents( ) );
+    mySession.startTorrents( getSelectedTorrents( ) );
 }
 void
 TrMainWindow :: pauseSelected( )
 {
-    mySession.pause( getSelectedTorrents( ) );
+    mySession.pauseTorrents( getSelectedTorrents( ) );
 }
 void
 TrMainWindow :: startAll( )
 {
-    mySession.start( );
+    mySession.startTorrents( );
 }
 void
 TrMainWindow :: pauseAll( )
 {
-    mySession.pause( );
+    mySession.pauseTorrents( );
 }
 void
 TrMainWindow :: removeSelected( )
@@ -1056,4 +1088,11 @@ TrMainWindow :: dataSendProgress( )
 {
     myLastSendTime = time( NULL );
     updateNetworkIcon( );
+}
+
+void
+TrMainWindow :: wrongAuthentication( )
+{
+    mySession.stop( );
+    mySessionDialog->show( );
 }
