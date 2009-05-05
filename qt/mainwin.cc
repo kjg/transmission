@@ -341,6 +341,21 @@ TrMainWindow :: createFilterBar( )
     h->setContentsMargins( HIG::PAD_SMALL, HIG::PAD_SMALL, HIG::PAD_SMALL, HIG::PAD_SMALL );
     h->setSpacing( HIG::PAD_SMALL );
 
+    top->setStyleSheet(" \
+      QPushButton{ \
+        border-radius: 10px; \
+        padding: 0 5px; \
+        border: 1px none; \
+      } \
+      QPushButton:pressed, QPushButton:checked{ \
+        border-width: 1px; \
+        border-style: solid; \
+        border-color: #5f5f5f #979797 #979797; \
+        background-color: #979797; \
+        color: white; \
+      } \
+    ");
+
         QList<QString> titles;
         titles << tr( "A&ll" ) << tr( "&Active" ) << tr( "&Downloading" ) << tr( "&Seeding" ) << tr( "&Paused" );
         for( i=0; i<titles.size(); ++i ) {
