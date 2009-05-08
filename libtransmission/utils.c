@@ -469,6 +469,7 @@ tr_loadFile( const char * path,
     uint8_t * buf;
     struct stat  sb;
     int fd;
+    ssize_t n;
     const char * err_fmt = _( "Couldn't read \"%1$s\": %2$s" );
 
     /* try to stat the file */
@@ -506,7 +507,8 @@ tr_loadFile( const char * path,
         errno = err;
         return NULL;
     }
-    if( read( fd, buf, sb.st_size ) != sb.st_size )
+    n = read( fd, buf, sb.st_size );
+    if( n == -1 )
     {
         const int err = errno;
         tr_err( err_fmt, path, tr_strerror( errno ) );
