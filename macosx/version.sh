@@ -10,7 +10,7 @@
 PEERID_PREFIX="-TR160Z-"
 USERAGENT_PREFIX="1.60+"
 
-SVN_REVISION=`git rev-parse --short HEAD`
+SVN_REVISION=`/opt/local/bin/git rev-parse --short HEAD`
 
 # Generate files to be included: only overwrite them if changed so make
 # won't rebuild everything unless necessary
