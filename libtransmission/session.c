@@ -661,7 +661,7 @@ tr_sessionInitImpl( void * vdata )
         tr_socketListAppend( socketList, &address );
     else
         tr_inf( _( "System does not seem to support IPv6. Not listening on"
-                   "an IPv6 address" ) );
+                   " an IPv6 address" ) );
 
     session->shared = tr_sharedInit( session, boolVal, session->peerPort,
                                      socketList );
@@ -972,7 +972,7 @@ tr_sessionGetActiveSpeedLimit( const tr_session * session, tr_direction dir, int
 static void
 updateBandwidth( tr_session * session, tr_direction dir )
 {
-    int limit;
+    int limit = 0;
     const tr_bool isLimited = tr_sessionGetActiveSpeedLimit( session, dir, &limit );
     const tr_bool zeroCase = isLimited && !limit;
 
