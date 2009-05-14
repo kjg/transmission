@@ -1,4 +1,40 @@
-Transmission.xcodeproj/*.mode1v3
-Transmission.xcodeproj/*.pbxuser
-build/
-libtransmission/version.h
+
+# /
+/.depend
+/build
+/release
+/beta
+
+# /Transmission.xcodeproj/
+/Transmission.xcodeproj/*.mode*
+/Transmission.xcodeproj/*.pbxuser
+
+# /cli/
+/cli/.depend
+/cli/transmissioncli
+
+# /daemon/
+/daemon/.depend
+/daemon/transmission-daemon
+/daemon/transmission-remote
+/daemon/transmission-proxy
+
+# /gtk/
+/gtk/.depend
+/gtk/defines.h
+/gtk/transmission-gtk
+
+# /libtransmission/
+/libtransmission/version.h
+/libtransmission/*.a
+/libtransmission/.depend
+
+# /macosx/
+/macosx/Info.plist
+/macosx/Transmission.app
+
+# /macosx/en.lproj/
+/macosx/en.lproj/*~.nib
+
+# /po/
+/po/*.mo
