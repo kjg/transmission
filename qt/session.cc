@@ -47,7 +47,9 @@ namespace
         TAG_SESSION_INFO,
         TAG_BLOCKLIST_UPDATE,
         TAG_ADD_TORRENT,
-        TAG_PORT_TEST
+        TAG_PORT_TEST,
+
+        FIRST_UNIQUE_TAG
     };
 }
 
@@ -121,8 +123,6 @@ Session :: updatePref( int key )
         case Prefs :: DOWNLOAD_DIR:
         case Prefs :: PEER_LIMIT_GLOBAL:
         case Prefs :: PEER_LIMIT_TORRENT:
-        case Prefs :: SEED_RATIO_LIMIT:
-        case Prefs :: SEED_RATIO_LIMITED:
         case Prefs :: USPEED_ENABLED:
         case Prefs :: USPEED:
         case Prefs :: DSPEED_ENABLED:
@@ -131,9 +131,14 @@ Session :: updatePref( int key )
         case Prefs :: PORT_FORWARDING:
         case Prefs :: PEER_PORT:
         case Prefs :: PEER_PORT_RANDOM_ON_START:
-        case Prefs :: RATIO:
-        case Prefs :: RATIO_ENABLED:
             sessionSet( myPrefs.keyStr(key), myPrefs.variant(key) );
+            break;
+
+        case Prefs :: RATIO:
+            sessionSet( "seedRatioLimit", myPrefs.variant(key) );           
+            break;           
+        case Prefs :: RATIO_ENABLED:
+            sessionSet( "seedRatioLimited", myPrefs.variant(key) );
             break;
 
         case Prefs :: RPC_AUTH_REQUIRED:
@@ -175,6 +180,7 @@ Session :: updatePref( int key )
 ***/
 
 Session :: Session( const char * configDir, Prefs& prefs ):
+    nextUniqueTag( FIRST_UNIQUE_TAG ),
     myBlocklistSize( -1 ),
     myPrefs( prefs ),
     mySession( 0 ),
@@ -318,8 +324,6 @@ namespace
         }
     }
 }
-
-const int Session :: ADD_TORRENT_TAG = TAG_ADD_TORRENT;
 
 void
 Session :: torrentSet( const QSet<int>& ids, const QString& key, double value )
@@ -527,7 +531,7 @@ Session :: updateBlocklist( )
 void
 Session :: exec( const tr_benc * request )
 {
-    char * str( tr_bencToJSON( request ) );
+    char * str( tr_bencToJSON( request, FALSE ) );
     exec( str );
     tr_free( str );
 }
@@ -621,9 +625,19 @@ Session :: parseResponse( const char * json, size_t jsonLength )
     const int err( tr_jsonParse( json, jsonLength, &top, &end ) );
     if( !err )
     {
-        int64_t tag;
+        int64_t tag = -1;
+        const char * result = NULL;
+        tr_benc * args = NULL;
+
+        tr_bencDictFindInt ( &top, "tag", &tag );
+        tr_bencDictFindStr ( &top, "result", &result );
+        tr_bencDictFindDict( &top, "arguments", &args );
+
+        emit executed( tag, result, args );
+
+        tr_benc * torrents;
         const char * str;
-        tr_benc *args, *torrents;
+
         if( tr_bencDictFindInt( &top, "tag", &tag ) )
         {
             switch( tag )
