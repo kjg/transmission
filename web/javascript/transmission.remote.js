@@ -96,6 +96,40 @@ TransmissionRemote.prototype =
 		} );
 	},
 
+  getTorrentIds: function(callback) {
+    var tr = this._controller;
+
+		var o = {
+			method: 'torrent-get',
+			arguments: { fields: [ 'id' ] }
+		};
+
+		this.sendRequest( o, function(data) {
+		  var ids = [];
+		  $.each(data.arguments.torrents, function(){ ids.push(this.id) });
+			if(typeof callback == "function")
+		    callback(ids)
+		} );
+  },
+
+  getInitialDataFor: function(torrent_ids, callback) {
+		var o = {
+			method: 'torrent-get',
+			arguments: {
+		    'ids': torrent_ids,
+		    fields: [ 'addedDate', 'announceURL', 'comment', 'creator',
+				'dateCreated', 'downloadedEver', 'error', 'errorString',
+				'eta', 'hashString', 'haveUnchecked', 'haveValid', 'id',
+				'isPrivate', 'leechers', 'leftUntilDone', 'name',
+				'peersConnected', 'peersGettingFromUs', 'peersSendingToUs',
+				'rateDownload', 'rateUpload', 'seeders', 'sizeWhenDone',
+				'status', 'swarmSpeed', 'totalSize', 'uploadedEver' ]
+			}
+		};
+
+    this.sendRequest( o, function(data){ console.log(data)} );
+  },
+
 	loadTorrents: function(update_files) {
 		var tr = this._controller;
 		var o = {
