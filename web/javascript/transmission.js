@@ -83,7 +83,10 @@ Transmission.prototype =
 		this.initializeSettings( );
 		
 		// Get preferences & torrents from the daemon
+		var tr = this;
 		this.remote.loadDaemonPrefs( );
+		this.remote.getTorrentIds( function(ids) { tr.syncTorrentsToRemote(ids) } );
+
 		this.remote.loadTorrents( true );
 		this.togglePeriodicRefresh( true );
 	},
@@ -1101,7 +1104,33 @@ Transmission.prototype =
 			if (t) t.refresh(this);
 		} );
 	},
-	
+
+  syncTorrentsToRemote: function( remote_torrent_ids ) {
+    var tr = this;
+
+    //Add New Torrents
+    var new_torrent_ids = [];
+    $.each(remote_torrent_ids, function(){
+      var id = parseInt(this);
+      if(Torrent.indexOf(tr._torrents, id) == -1)
+        new_torrent_ids.push(id)
+    });
+
+    tr.remote.getInitialDataFor(new_torrent_ids, function(data){ tr.addNewTorrents(data.arguments.torrents) } );
+
+    //remove existing torrents
+  },
+
+  addNewTorrents: function( new_torrents ){
+    var tr = this;
+
+    $.each( new_torrents, function(){
+      var torrent = this;
+      tr._torrents.push( new Torrent( tr, torrent ) );
+      console.log("lbah")
+    });
+
+  },
 	/*
 	 * Process got some new torrent data from the server
 	 */
@@ -1126,6 +1155,7 @@ Transmission.prototype =
 			}
 		}
 		
+/*
 		// Add any torrents that aren't already being displayed
 		// if file data is available
 		if( new_torrents.length ) {
@@ -1142,6 +1172,7 @@ Transmission.prototype =
 				this.scheduleFileRefresh();
 			}
 		}
+*/
 		
 		// Remove any torrents that weren't in the refresh list
 		var removedAny = false;

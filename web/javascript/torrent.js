@@ -88,27 +88,29 @@ Torrent.prototype =
 		
 		// insert the element
 		$('#torrent_list').append(this._element);
-		this.initializeTorrentFilesInspectorGroup(data.files.length);
-		
-		for (var i = 0; i < data.files.length; i++) {
-			var file = data.files[i];
-			file.index    = i;
-			file.torrent  = this;
-			file.priority = data.priorities[i];
-			file.wanted   = data.wanted[i];
-			var torrentFile = new TorrentFile(file); 
-			this._files.push(torrentFile);
-			this._fileList.append(
-				torrentFile.element().addClass(i % 2 ? 'even' : 'odd').addClass('inspector_torrent_file_list_entry')
-			);
+
+		this._files = [];
+		if(data.files){
+			this.initializeTorrentFilesInspectorGroup(data.files.length);
+			for (var i = 0; i < data.files.length; i++) {
+				var file = data.files[i];
+				file.index      = i;
+				file.torrent    = this;
+				file.priority   = data.priorities[i];
+				file.wanted     = data.wanted[i];
+				var torrentFile = new TorrentFile(file);
+				this._files.push(torrentFile);
+				this._fileList.append(
+					torrentFile.element().addClass(i % 2 ? 'even' : 'odd').addClass('inspector_torrent_file_list_entry')
+				);
+			}
 		}
-		
+
 		// Update all the labels etc
 		this.refresh(data);
 	},
 	
 	initializeTorrentFilesInspectorGroup: function(length) {
-		this._files = [];
         this._fileList = $('<ul/>').addClass('inspector_torrent_file_list').addClass('inspector_group').hide();
         if(length == 1) 
             this._fileList.addClass('single_file');

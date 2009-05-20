@@ -127,7 +127,7 @@ TransmissionRemote.prototype =
 			}
 		};
 
-    this.sendRequest( o, function(data){ console.log(data)} );
+    this.sendRequest( o, function(data){ callback(data)} );
   },
 
 	loadTorrents: function(update_files) {
