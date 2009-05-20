@@ -129,30 +129,6 @@ TransmissionRemote.prototype =
 
     this.sendRequest( o, function(data){ callback(data)} );
   },
-
-	loadTorrents: function(update_files) {
-		var tr = this._controller;
-		var o = {
-			method: 'torrent-get',
-			arguments: { fields: [
-				'addedDate', 'announceURL', 'comment', 'creator',
-				'dateCreated', 'downloadedEver', 'error', 'errorString',
-				'eta', 'hashString', 'haveUnchecked', 'haveValid', 'id',
-				'isPrivate', 'leechers', 'leftUntilDone', 'name',
-				'peersConnected', 'peersGettingFromUs', 'peersSendingToUs',
-				'rateDownload', 'rateUpload', 'seeders', 'sizeWhenDone',
-				'status', 'swarmSpeed', 'totalSize', 'uploadedEver' ]
-			}
-		};
-		if (update_files) {
-			o.arguments.fields.push('files');
-			o.arguments.fields.push('wanted');
-			o.arguments.fields.push('priorities');
-		}
-		this.sendRequest( o, function(data) {
-			tr.updateAllTorrents( data.arguments.torrents );
-		} );
-	},
 	
 	loadTorrentFiles: function( torrent_ids ) {
 		var tr = this._controller;
@@ -188,7 +164,8 @@ TransmissionRemote.prototype =
 			for( var i=0, len=torrents.length; i<len; ++i )
 				o.arguments.ids.push( torrents[i].id() );
 		this.sendRequest( o, function( ) {
-			remote.loadTorrents();
+		  remote._controller.syncTorrentsToRemote();
+			//TODO: refresh data for (torents)
 		} );
 	},
 	
@@ -215,7 +192,7 @@ TransmissionRemote.prototype =
 			for( var i=0, len=torrents.length; i<len; ++i )
 				o.arguments.ids.push( torrents[i].id() );
 		this.sendRequest( o, function( ) {
-			remote.loadTorrents();
+			remote._controller.syncTorrentsToRemote();
 		} );
 	},
 	verifyTorrents: function( torrents ) {
@@ -232,7 +209,7 @@ TransmissionRemote.prototype =
 		};
 		
 		this.sendRequest(o, function() {
-			remote.loadTorrents();
+			remote._controller.syncTorrentsToRemote();
 		} );
 	},
 	savePrefs: function( args ) {
