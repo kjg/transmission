@@ -65,7 +65,7 @@ Transmission.prototype =
 			$('#preferences_link').bind('click', this.releaseClutchPreferencesButton);
 		} else {
 			$(document).bind('keydown',  this.keyDown);
-			$('#torrent_container').bind('click', function(){ tr.deselectAll(); });
+			$('#torrent_container').bind('click', function(){ tr.deselectAll( true ); });
 			$('#open_link').bind('click', this.openTorrentClicked);
 			$('#filter_toggle_link').bind('click', this.toggleFilterClicked);
 			$('#inspector_link').bind('click', this.toggleInspectorClicked);
@@ -396,7 +396,7 @@ Transmission.prototype =
 			tr.selectionChanged();
 	},
 	deselectAll: function( doUpdate ) {
-		var tr = this;
+		var tr = transmission;
 		for( var i=0, len=tr._rows.length; i<len; ++i )
 			tr.deselectElement( tr._rows[i] );
 		tr._last_torrent_clicked = null;
