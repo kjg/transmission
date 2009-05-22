@@ -1119,6 +1119,15 @@ Transmission.prototype =
     this.refilter();
 	},
 
+  updateTorrentsFileData: function( torrents ){
+    var tr = this;
+		jQuery.each( torrents, function() {
+			var t = Torrent.lookup(tr._torrents, this.id);
+			if (t)
+		    t.refreshFileData(this);
+		} );
+  },
+
   initalizeAllTorrents: function(){
     var tr = this;
     this.remote.getInitialDataFor( null ,function(torrents) { tr.addTorrents(torrents); } );
@@ -1136,6 +1145,8 @@ Transmission.prototype =
   },
 
   deleteTorrents: function(torrent_ids){
+    if(typeof torrent_ids == 'undefined')
+      return false;
     var tr = this;
     var removedAny = false;
     $.each( torrent_ids, function(index, id){

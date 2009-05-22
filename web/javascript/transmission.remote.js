@@ -106,7 +106,7 @@ TransmissionRemote.prototype =
 				'isPrivate', 'leechers', 'leftUntilDone', 'name',
 				'peersConnected', 'peersGettingFromUs', 'peersSendingToUs',
 				'rateDownload', 'rateUpload', 'seeders', 'sizeWhenDone',
-				'status', 'swarmSpeed', 'totalSize', 'uploadedEver' ]
+				'status', 'swarmSpeed', 'totalSize', 'uploadedEver', 'files', 'fileStats' ]
 			}
 		};
 
@@ -136,10 +136,9 @@ TransmissionRemote.prototype =
 		var tr = this._controller;
 		this.sendRequest( {
 			method: 'torrent-get',
-			arguments: { fields: [ 'files', 'wanted', 'priorities'] },
-			ids: torrent_ids
+			arguments: { fields: [ 'id', 'fileStats'], ids: torrent_ids },
 		}, function(data) {
-			tr.updateTorrentsData( data.arguments.torrents );
+			tr.updateTorrentsFileData( data.arguments.torrents );
 		} );
 	},
 	
@@ -193,7 +192,7 @@ TransmissionRemote.prototype =
 			for( var i=0, len=torrents.length; i<len; ++i )
 				o.arguments.ids.push( torrents[i].id() );
 		this.sendRequest( o, function( ) {
-			remote._controller.refreshTorrents();
+			remote._controller.refreshTorrents( 'recently-active' );
 		} );
 	},
 	verifyTorrents: function( torrents ) {

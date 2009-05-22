@@ -106,14 +106,14 @@ Torrent.prototype =
 		this._files = [];
 		this.initializeTorrentFilesInspectorGroup();
 		if(data.files){
-      if(length == 1)
+      if(data.files.length == 1)
         this._fileList.addClass('single_file');
 			for (var i = 0; i < data.files.length; i++) {
 				var file = data.files[i];
 				file.index      = i;
 				file.torrent    = this;
-				file.priority   = data.priorities[i];
-				file.wanted     = data.wanted[i];
+				file.priority   = data.fileStats[i].priority;
+				file.wanted     = data.fileStats[i].wanted;
 				var torrentFile = new TorrentFile(file);
 				this._files.push(torrentFile);
 				this._fileList.append(
@@ -312,15 +312,29 @@ Torrent.prototype =
 		this._total_seeders         = Math.max( 0, data.seeders );
 		this._state                 = data.status;
 		
-		if (data.files) {
-			for (var i = 0; i < data.files.length; i++) {
-				var file_data      = data.files[i];
-				if (data.priorities) { file_data.priority = data.priorities[i]; }
-				if (data.wanted)     { file_data.wanted   = data.wanted[i]; }
+		if (data.fileStats) {
+		  console.log('fileStats')
+			for (var i = 0; i < data.fileStats.length; i++) {
+				var file_data      = {};
+				file_data.priority = data.fileStats[i].priority;
+				file_data.wanted   = data.fileStats[i].wanted;
+				file_data.bytesCompleted = data.fileStats[i].bytesCompleted;
 				this._files[i].readAttributes(file_data);
 			}
 		}
 	},
+
+  refreshFileData: function(data) {
+    
+  	for (var i = 0; i < data.fileStats.length; i++) {
+  		var file_data      = {};
+  		file_data.priority = data.fileStats[i].priority;
+  		file_data.wanted   = data.fileStats[i].wanted;
+  		file_data.bytesCompleted = data.fileStats[i].bytesCompleted;
+  		this._files[i].readAttributes(file_data);
+  		this._files[i].refreshHTML();
+  	}
+  },
 
 	refreshHTML: function() {
 		var progress_details;
@@ -461,6 +475,7 @@ Torrent.prototype =
 	},
 
 	refreshFiles: function() {
+	 console.log('refreshingFiles')
 		jQuery.each(this._files, function () {
 			this.refreshHTML();
 		} );
