@@ -104,8 +104,10 @@ Torrent.prototype =
 		$('#torrent_list').append(this._element);
 
 		this._files = [];
+		this.initializeTorrentFilesInspectorGroup();
 		if(data.files){
-			this.initializeTorrentFilesInspectorGroup(data.files.length);
+      if(length == 1)
+        this._fileList.addClass('single_file');
 			for (var i = 0; i < data.files.length; i++) {
 				var file = data.files[i];
 				file.index      = i;
@@ -126,8 +128,6 @@ Torrent.prototype =
 	
 	initializeTorrentFilesInspectorGroup: function(length) {
         this._fileList = $('<ul/>').addClass('inspector_torrent_file_list').addClass('inspector_group').hide();
-        if(length == 1) 
-            this._fileList.addClass('single_file');
         $('#inspector_file_list').append(this._fileList);
 	},
 	
