@@ -24,6 +24,20 @@ Torrent.prototype =
 	 * Constructor
 	 */
 	initialize: function(controller, data) {
+		this._id            = data.id;
+		this._is_private    = data.isPrivate;
+		this._hashString    = data.hashString;
+		this._date          = data.addedDate;
+		this._size          = data.totalSize;
+		this._tracker       = data.announceURL;
+		this._comment       = data.comment;
+		this._creator       = data.creator;
+		this._creator_date  = data.dateCreated;
+		this._sizeWhenDone  = data.sizeWhenDone;
+		this._name          = data.name;
+		this._name_lc       = this._name.toLowerCase( );
+
+
 		// Create a new <li> element
 		var element = $('<li/>');
 		element.addClass('torrent');
@@ -280,24 +294,6 @@ Torrent.prototype =
 	 * Refresh display
 	 */
 	refreshData: function(data) {
-		// These variables never change after the inital load
-		if (data.isPrivate)     this._is_private    = data.isPrivate;
-		if (data.hashString)    this._hashString    = data.hashString;
-		if (data.addedDate)     this._date          = data.addedDate;
-		if (data.totalSize)     this._size          = data.totalSize;
-		if (data.announceURL)   this._tracker       = data.announceURL;
-		if (data.comment)       this._comment       = data.comment;
-		if (data.creator)       this._creator       = data.creator;
-		if (data.dateCreated)   this._creator_date  = data.dateCreated;
-		if (data.sizeWhenDone)  this._sizeWhenDone  = data.sizeWhenDone;
-		if (data.path)          this._torrent_file  = data.path;//FIXME
-		if (data.name) {
-			this._name = data.name;
-			this._name_lc = this._name.toLowerCase( );
-		}
-		
-		// Set the regularly-changing torrent variables
-		this._id                    = data.id;
 		this._completed             = data.haveUnchecked + data.haveValid;
 		this._verified              = data.haveValid;
 		this._leftUntilDone         = data.leftUntilDone;
