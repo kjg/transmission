@@ -179,6 +179,7 @@ static TR_INLINE tr_bool tr_isEncryptionMode( tr_encryption_mode m )
 #define TR_PREFS_KEY_BIND_ADDRESS_IPV4          "bind-address-ipv4"
 #define TR_PREFS_KEY_BIND_ADDRESS_IPV6          "bind-address-ipv6"
 #define TR_PREFS_KEY_BLOCKLIST_ENABLED          "blocklist-enabled"
+#define TR_PREFS_KEY_DHT_ENABLED                "dht-enabled"
 #define TR_PREFS_KEY_DOWNLOAD_DIR               "download-dir"
 #define TR_PREFS_KEY_ENCRYPTION                 "encryption"
 #define TR_PREFS_KEY_LAZY_BITFIELD              "lazy-bitfield-enabled"
@@ -529,6 +530,10 @@ void               tr_sessionSetPexEnabled( tr_session  * session,
                                             tr_bool       isEnabled );
 
 tr_bool            tr_sessionIsPexEnabled( const tr_session * session );
+
+tr_bool            tr_sessionIsDHTEnabled( const tr_session * session );
+
+void               tr_sessionSetDHTEnabled( tr_session * session, tr_bool );
 
 void               tr_sessionSetLazyBitfieldEnabled( tr_session * session,
                                                      tr_bool       enabled );
@@ -935,11 +940,19 @@ void tr_torrentStop( tr_torrent * torrent );
 
 typedef int tr_fileFunc( const char * filename );
 
+enum
+{
+    TR_LOC_MOVING,
+    TR_LOC_DONE,
+    TR_LOC_ERROR
+};
+
 /** @brief Tell transmsision where to find this torrent's local data */
 void tr_torrentSetLocation( tr_torrent  * torrent,
                             const char  * location,
                             tr_bool       move_from_previous_location,
-                            tr_bool     * setme_done );
+                            double      * setme_progress,
+                            int         * setme_state );
 
 /**
  * @brief Deletes the torrent's local data.
@@ -1343,8 +1356,9 @@ enum
 {
     TR_PEER_FROM_INCOMING  = 0,  /* connections made to the listening port */
     TR_PEER_FROM_TRACKER   = 1,  /* peers received from a tracker */
-    TR_PEER_FROM_CACHE     = 2,  /* peers read from the peer cache */
-    TR_PEER_FROM_PEX       = 3,  /* peers discovered via PEX */
+    TR_PEER_FROM_DHT       = 2,  /* peers learnt from the DHT */
+    TR_PEER_FROM_CACHE     = 3,  /* peers read from the peer cache */
+    TR_PEER_FROM_PEX       = 4,  /* peers discovered via PEX */
     TR_PEER_FROM__MAX
 };
 

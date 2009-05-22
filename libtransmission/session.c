@@ -45,6 +45,7 @@
 #include "version.h"
 #include "verify.h"
 #include "web.h"
+#include "tr-dht.h"
 
 #define dbgmsg( ... ) \
     do { \
@@ -346,6 +347,7 @@ tr_sessionGetDefaultSettings( tr_benc * d )
 
     tr_bencDictReserve( d, 35 );
     tr_bencDictAddBool( d, TR_PREFS_KEY_BLOCKLIST_ENABLED,        FALSE );
+    tr_bencDictAddBool( d, TR_PREFS_KEY_DHT_ENABLED,              TRUE );
     tr_bencDictAddStr ( d, TR_PREFS_KEY_DOWNLOAD_DIR,             tr_getDefaultDownloadDir( ) );
     tr_bencDictAddInt ( d, TR_PREFS_KEY_DSPEED,                   100 );
     tr_bencDictAddBool( d, TR_PREFS_KEY_DSPEED_ENABLED,           FALSE );
@@ -402,6 +404,7 @@ tr_sessionGetSettings( tr_session * s, struct tr_benc * d )
 
     tr_bencDictReserve( d, 30 );
     tr_bencDictAddBool( d, TR_PREFS_KEY_BLOCKLIST_ENABLED,        tr_blocklistIsEnabled( s ) );
+    tr_bencDictAddBool( d, TR_PREFS_KEY_DHT_ENABLED,              s->isDHTEnabled );
     tr_bencDictAddStr ( d, TR_PREFS_KEY_DOWNLOAD_DIR,             s->downloadDir );
     tr_bencDictAddInt ( d, TR_PREFS_KEY_DSPEED,                   tr_sessionGetSpeedLimit( s, TR_DOWN ) );
     tr_bencDictAddBool( d, TR_PREFS_KEY_DSPEED_ENABLED,           tr_sessionIsSpeedLimited( s, TR_DOWN ) );
@@ -526,7 +529,6 @@ tr_sessionSaveSettings( tr_session    * session,
     tr_bencFree( &settings );
 }
 
-static void metainfoLookupRescan( tr_session * );
 static void tr_sessionInitImpl( void * );
 static void onAltTimer( int, short, void* );
 static void setAltTimer( tr_session * session );
@@ -621,6 +623,10 @@ tr_sessionInitImpl( void * vdata )
     found = tr_bencDictFindBool( &settings, TR_PREFS_KEY_PEX_ENABLED, &boolVal );
     assert( found );
     session->isPexEnabled = boolVal;
+
+    found = tr_bencDictFindBool( &settings, TR_PREFS_KEY_DHT_ENABLED, &boolVal );
+    assert( found );
+    session->isDHTEnabled = boolVal;
 
     found = tr_bencDictFindInt( &settings, TR_PREFS_KEY_ENCRYPTION, &i );
     assert( found );
@@ -827,9 +833,11 @@ tr_sessionInitImpl( void * vdata )
 
     tr_statsInit( session );
     session->web = tr_webInit( session );
-    metainfoLookupRescan( session );
     session->isWaiting = FALSE;
     dbgmsg( "returning session %p; session->tracker is %p", session, session->tracker );
+
+    if( session->isDHTEnabled )
+        tr_dhtInit(session);
 }
 
 /***
@@ -1392,7 +1400,7 @@ compareTorrentByCur( const void * va, const void * vb )
 }
 
 static void
-tr_closeAllConnections( void * vsession )
+sessionCloseImpl( void * vsession )
 {
     tr_session *  session = vsession;
     tr_torrent *  tor;
@@ -1402,6 +1410,9 @@ tr_closeAllConnections( void * vsession )
     assert( tr_isSession( session ) );
 
     free_incoming_peer_port( session );
+
+    if( session->isDHTEnabled )
+        tr_dhtUninit( session );
 
     evtimer_del( session->altTimer );
     tr_free( session->altTimer );
@@ -1455,7 +1466,7 @@ tr_sessionClose( tr_session * session )
     dbgmsg( "shutting down transmission session %p", session );
 
     /* close the session */
-    tr_runInEventThread( session, tr_closeAllConnections, session );
+    tr_runInEventThread( session, sessionCloseImpl, session );
     while( !session->isClosed && !deadlineReached( deadline ) )
     {
         dbgmsg(
@@ -1577,6 +1588,31 @@ tr_sessionIsPexEnabled( const tr_session * session )
     assert( tr_isSession( session ) );
 
     return session->isPexEnabled;
+}
+
+tr_bool
+tr_sessionIsDHTEnabled( const tr_session * session )
+{
+    assert( tr_isSession( session ) );
+
+    return session->isDHTEnabled;
+}
+
+void
+tr_sessionSetDHTEnabled( tr_session * session, tr_bool enabled )
+{
+    assert( tr_isSession( session ) );
+
+    if( ( enabled!=0 ) != (session->isDHTEnabled!=0) )
+    {
+        if( session->isDHTEnabled )
+            tr_dhtUninit( session );
+
+        session->isDHTEnabled = enabled!=0;
+
+        if( session->isDHTEnabled )
+            tr_dhtInit( session );
+    }
 }
 
 /***
@@ -1743,19 +1779,6 @@ compareHashStringToLookupEntry( const void * va, const void * vb )
     return strcmp( a, b->hashString );
 }
 
-const char*
-tr_sessionFindTorrentFile( const tr_session * session,
-                           const char       * hashStr )
-{
-    struct tr_metainfo_lookup * l = bsearch( hashStr,
-                                             session->metainfoLookup,
-                                             session->metainfoLookupCount,
-                                             sizeof( struct tr_metainfo_lookup ),
-                                             compareHashStringToLookupEntry );
-
-    return l ? l->filename : NULL;
-}
-
 static void
 metainfoLookupRescan( tr_session * session )
 {
@@ -1814,17 +1837,46 @@ metainfoLookupRescan( tr_session * session )
     tr_dbg( "Found %d torrents in \"%s\"", n, dirname );
 }
 
+static struct tr_metainfo_lookup *
+metainfoLookup( const tr_session * session, const char * hashString )
+{
+    /* because only the mac client uses metainfoLookup, and because building
+     * the lookup is expensive, we hold off on building it until the client
+     * actually asks to look up a hash... */
+    if( !session->metainfoLookupCount )
+        metainfoLookupRescan( (tr_session*)session );
+
+    return bsearch( hashString,
+                    session->metainfoLookup,
+                    session->metainfoLookupCount,
+                    sizeof( struct tr_metainfo_lookup ),
+                    compareHashStringToLookupEntry );
+}
+
+const char*
+tr_sessionFindTorrentFile( const tr_session  * session,
+                           const char        * hashString )
+{
+    const struct tr_metainfo_lookup * l = metainfoLookup( session, hashString );
+
+    return l ? l->filename : NULL;
+}
+
 void
 tr_sessionSetTorrentFile( tr_session * session,
                           const char * hashString,
                           const char * filename )
 {
-    struct tr_metainfo_lookup * l = bsearch( hashString,
-                                             session->metainfoLookup,
-                                             session->metainfoLookupCount,
-                                             sizeof( struct tr_metainfo_lookup ),
-                                             compareHashStringToLookupEntry );
+    struct tr_metainfo_lookup * l;
 
+    /* since we walk session->configDir/torrents/ to build the lookup table,
+     * and tr_sessionSetTorrentFile() is just to tell us there's a new file
+     * in that same directory, we don't need to do anything here if the
+     * lookup table hasn't been built yet */
+    if( session->metainfoLookup == NULL )
+        return;
+
+    l = metainfoLookup( session, hashString );
     if( l )
     {
         if( l->filename != filename )

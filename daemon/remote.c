@@ -81,6 +81,8 @@ static tr_option opts[] =
     { 'M', "no-portmap",           "Disable portmapping", "M",  0, NULL },
     { 'n', "auth",                 "Set authentication info", "n",  1, "<username:password>" },
     { 'N', "netrc",                "Set authentication info from a .netrc file", "N",  1, "<filename>" },
+    { 'o', "dht",                  "Enable distributed hash tables (DHT)", "o", 0, NULL },
+    { 'O', "no-dht",               "Disable distributed hash tables (DHT)", "O", 0, NULL },
     { 'p', "port",                 "Port for incoming peers (Default: " TR_DEFAULT_PEER_PORT_STR ")", "p", 1, "<port>" },
     { 'P', "random-port",          "Random port for incomping peers", "P", 0, NULL },
     { 900, "priority-high",        "Set the files' priorities as high", "ph", 1, "<files>" },
@@ -113,7 +115,6 @@ static void
 showUsage( void )
 {
     tr_getopt_usage( MY_NAME, getUsage( ), opts );
-    exit( 0 );
 }
 
 static int
@@ -126,6 +127,7 @@ numarg( const char * arg )
     {
         fprintf( stderr, "Not a number: \"%s\"\n", arg );
         showUsage( );
+        exit( EXIT_FAILURE );
     }
     return num;
 }
@@ -302,14 +304,15 @@ static const char * list_keys[] = {
     "uploadRatio"
 };
 
-static void
+static int
 readargs( int           argc,
           const char ** argv )
 {
-    int          c;
-    int          addingTorrents = 0;
+    int c;
+    int addingTorrents = 0;
+    int status = EXIT_SUCCESS;
+    char id[4096];
     const char * optarg;
-    char         id[4096];
 
     *id = '\0';
 
@@ -343,6 +346,7 @@ readargs( int           argc,
                 {
                     fprintf( stderr, "Unknown option: %s\n", optarg );
                     addArg = FALSE;
+                    status |= EXIT_FAILURE;
                 }
                 break;
 
@@ -493,6 +497,16 @@ readargs( int           argc,
                 break;
             }
 
+            case 'o':
+                tr_bencDictAddStr( &top, "method", "session-set" );
+                tr_bencDictAddBool( args, TR_PREFS_KEY_DHT_ENABLED, TRUE );
+                break;
+
+            case 'O':
+                tr_bencDictAddStr( &top, "method", "session-set" );
+                tr_bencDictAddBool( args, TR_PREFS_KEY_DHT_ENABLED, FALSE );
+                break;
+
             case 'x':
                 tr_bencDictAddStr( &top, "method", "session-set" );
                 tr_bencDictAddBool( args, TR_PREFS_KEY_PEX_ENABLED, TRUE );
@@ -607,6 +621,7 @@ readargs( int           argc,
             case TR_OPT_ERR:
                 fprintf( stderr, "invalid option\n" );
                 showUsage( );
+                status |= EXIT_FAILURE;
                 break;
 
             default:
@@ -624,6 +639,8 @@ readargs( int           argc,
 
         tr_bencFree( &top );
     }
+
+    return status;
 }
 
 /* [host:port] or [host] or [port] */
@@ -1252,21 +1269,25 @@ printTorrentList( tr_benc * top )
     }
 }
 
-static void
+static int
 processResponse( const char * host,
                  int          port,
                  const void * response,
                  size_t       len )
 {
     tr_benc top;
+    int status = EXIT_SUCCESS;
 
     if( debug )
         fprintf( stderr, "got response (len %d):\n--------\n%*.*s\n--------\n",
                  (int)len, (int)len, (int)len, (const char*) response );
 
     if( tr_jsonParse( response, len, &top, NULL ) )
+    {
         tr_nerr( MY_NAME, "Unable to parse response \"%*.*s\"", (int)len,
                  (int)len, (char*)response );
+        status |= EXIT_FAILURE;
+    }
     else
     {
         int64_t      tag = -1;
@@ -1291,12 +1312,19 @@ processResponse( const char * host,
                 printPeers( &top ); break;
 
             default:
-                if( tr_bencDictFindStr( &top, "result", &str ) )
+                if( !tr_bencDictFindStr( &top, "result", &str ) )
+                    status |= EXIT_FAILURE;
+                else {
                     printf( "%s:%d responded: \"%s\"\n", host, port, str );
+                    if( strcmp( str, "success") )
+                        status |= EXIT_FAILURE;
+                }
         }
 
         tr_bencFree( &top );
     }
+
+    return status;
 }
 
 /* look for a session id in the header in case the server gives back a 409 */
@@ -1351,7 +1379,7 @@ tr_curl_easy_init( struct evbuffer * writebuf )
 }
     
 
-static void
+static int
 processRequests( const char *  host,
                  int           port,
                  const char ** reqs,
@@ -1361,6 +1389,7 @@ processRequests( const char *  host,
     CURL * curl = NULL;
     struct evbuffer * buf = evbuffer_new( );
     char * url = tr_strdup_printf( "http://%s:%d/transmission/rpc", host, port );
+    int status = EXIT_SUCCESS;
 
     for( i=0; i<reqCount; ++i )
     {
@@ -1378,13 +1407,16 @@ processRequests( const char *  host,
         if( debug )
             fprintf( stderr, "posting:\n--------\n%s\n--------\n", reqs[i] );
         if( ( res = curl_easy_perform( curl ) ) )
+        {
             tr_nerr( MY_NAME, "(%s:%d) %s", host, port, curl_easy_strerror( res ) );
+            status |= EXIT_FAILURE;
+        }
         else {
             long response;
             curl_easy_getinfo( curl, CURLINFO_RESPONSE_CODE, &response );
             switch( response ) {
                 case 200:
-                    processResponse( host, port, EVBUFFER_DATA(buf), EVBUFFER_LENGTH(buf) );
+                    status |= processResponse( host, port, EVBUFFER_DATA(buf), EVBUFFER_LENGTH(buf) );
                     break;
                 case 409:
                     /* session id failed.  our curl header func has already
@@ -1396,6 +1428,7 @@ processRequests( const char *  host,
                     break;
                 default:
                     fprintf( stderr, "Unexpected response: %s\n", (char*)EVBUFFER_DATA(buf) );
+                    status |= EXIT_FAILURE;
                     break;
             }
         }
@@ -1406,6 +1439,7 @@ processRequests( const char *  host,
     evbuffer_free( buf );
     if( curl != NULL )
         curl_easy_cleanup( curl );
+    return status;
 }
 
 int
@@ -1415,24 +1449,30 @@ main( int     argc,
     int    i;
     int    port = DEFAULT_PORT;
     char * host = NULL;
+    int    exit_status = EXIT_SUCCESS;
 
-    if( argc < 2 )
+    if( argc < 2 ) {
         showUsage( );
+        return EXIT_FAILURE;
+    }
 
     getHostAndPort( &argc, argv, &host, &port );
     if( host == NULL )
         host = tr_strdup( DEFAULT_HOST );
 
-    readargs( argc, (const char**)argv );
+    exit_status |= readargs( argc, (const char**)argv );
     if( reqCount )
-        processRequests( host, port, (const char**)reqs, reqCount );
-    else
+        exit_status = processRequests( host, port, (const char**)reqs, reqCount );
+    else {
         showUsage( );
+        return EXIT_FAILURE;
+    }
+        
 
-    for( i = 0; i < reqCount; ++i )
+    for( i=0; i<reqCount; ++i )
         tr_free( reqs[i] );
 
     tr_free( host );
-    return 0;
+    return exit_status;
 }
 
