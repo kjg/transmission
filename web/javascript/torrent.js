@@ -313,7 +313,6 @@ Torrent.prototype =
 		this._state                 = data.status;
 		
 		if (data.fileStats) {
-		  console.log('fileStats')
 			for (var i = 0; i < data.fileStats.length; i++) {
 				var file_data      = {};
 				file_data.priority = data.fileStats[i].priority;
@@ -475,7 +474,6 @@ Torrent.prototype =
 	},
 
 	refreshFiles: function() {
-	 console.log('refreshingFiles')
 		jQuery.each(this._files, function () {
 			this.refreshHTML();
 		} );
