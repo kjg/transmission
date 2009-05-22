@@ -1145,8 +1145,8 @@ Transmission.prototype =
         removedAny = true;
         var e = torrent.element();
         if( e ) {
-          delete e._torrent; //remove circular refernce to help IE garbage collect
           var row_index = tr.getTorrentIndex(tr._rows, torrent);
+          delete e._torrent; //remove circular refernce to help IE garbage collect
           tr._rows.splice(row_index, 1)
           e.remove();
         }
