@@ -658,12 +658,13 @@ Transmission.prototype =
 	 * Turn the periodic ajax-refresh on & off
 	 */
 	togglePeriodicRefresh: function(state) {
+    tr = this;
 		if (state && this._periodic_refresh == null) {
 			// sanity check
 			if( !this[Prefs._RefreshRate] )
 			     this[Prefs._RefreshRate] = 5;
 			remote = this.remote;
-			this._periodic_refresh = setInterval(this.periodicRefresh, this[Prefs._RefreshRate] * 1000 );
+			this._periodic_refresh = setInterval(function(){ tr.periodicRefresh() }, this[Prefs._RefreshRate] * 1000 );
 		} else {
 			clearInterval(this._periodic_refresh);
 			this._periodic_refresh = null;
@@ -671,9 +672,9 @@ Transmission.prototype =
 	},
 	
 	periodicRefresh: function() {
-		// Note: 'this' != 'transmission instance' since it is being called by setInterval
-		if (!transmission._periodicRefreshIterations)
-			transmission._periodicRefreshIterations = 0;
+	 console.log(this)
+		if (!this._periodicRefreshIterations)
+			this._periodicRefreshIterations = 0;
 		
 		//TODO call referesh
 	},
