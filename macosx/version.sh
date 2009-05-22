@@ -28,7 +28,7 @@ cat > libtransmission/version.h.new << EOF
 #define PEERID_PREFIX             "$PEERID_PREFIX"
 #define USERAGENT_PREFIX          "$USERAGENT_PREFIX"
 #define SVN_REVISION              "$SVN_REVISION"
-#define SVN_REVISION_NUM          $SVN_REVISION
+#define SVN_REVISION_NUM          0x$SVN_REVISION
 #define SHORT_VERSION_STRING      "$USERAGENT_PREFIX"
 #define LONG_VERSION_STRING       "$USERAGENT_PREFIX ($SVN_REVISION)"
 
