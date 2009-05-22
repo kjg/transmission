@@ -279,6 +279,10 @@ Transmission.prototype =
 		return this._torrents;
 	},
 
+  getAllTorrentIds: function(){
+    return jQuery.map(this._torrents, function(t) { return t.id(); } );
+  },
+
 	getVisibleTorrents: function()
 	{
 		var torrents = [ ];
@@ -664,7 +668,7 @@ Transmission.prototype =
 			if( !this[Prefs._RefreshRate] )
 			     this[Prefs._RefreshRate] = 5;
 			remote = this.remote;
-			this._periodic_refresh = setInterval(function(){ tr.refreshTorrents() }, this[Prefs._RefreshRate] * 1000 );
+			this._periodic_refresh = setInterval(function(){ tr.refreshTorrents( tr.getAllTorrentIds() ); }, this[Prefs._RefreshRate] * 1000 );
 		} else {
 			clearInterval(this._periodic_refresh);
 			this._periodic_refresh = null;
@@ -1089,10 +1093,9 @@ Transmission.prototype =
 		this.setFilter( Prefs._FilterAll );
 	},
 
-	refreshTorrents: function() {
-    tr = this;
-    torrent_ids = jQuery.map(this._torrents, function(t) { return t.id(); } );
-		this.remote.getUpdatedDataFor(torrent_ids, function(data){ tr.updateTorrentsData(data) });
+	refreshTorrents: function( torrent_ids ) {
+    var tr = this;
+		this.remote.getUpdatedDataFor(torrent_ids, function(data){ tr.updateTorrentsData(data); tr.refilter(); });
 	},
 
 	updateTorrentsData: function( torrent_list ) {

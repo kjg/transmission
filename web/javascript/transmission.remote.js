@@ -180,8 +180,9 @@ TransmissionRemote.prototype =
 			for( var i=0, len=torrents.length; i<len; ++i )
 				o.arguments.ids.push( torrents[i].id() );
 		this.sendRequest( o, function( ) {
-		  remote._controller.syncTorrentsToRemote();
-			//TODO: refresh data for (torents)
+		  if(method.match(/remove/))
+		    remote._controller.syncTorrentsToRemote();
+		  remote._controller.refreshTorrents( o.arguments.ids );
 		} );
 	},
 	
