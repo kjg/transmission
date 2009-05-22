@@ -1129,7 +1129,8 @@ Transmission.prototype =
         new_torrent_ids.push(id)
     });
 
-    tr.remote.getInitialDataFor(new_torrent_ids, function(data){ tr.addTorrents(data.arguments.torrents) } );
+    if(new_torrent_ids > 0)
+      tr.remote.getInitialDataFor(new_torrent_ids, function(data){ tr.addTorrents(data.arguments.torrents) } );
 
 		if( ( new_torrent_ids.length != 0 ) || removedAny ) {
 			this.hideiPhoneAddressbar();
