@@ -165,7 +165,7 @@ TransmissionRemote.prototype =
 			for( var i=0, len=torrents.length; i<len; ++i )
 				o.arguments.ids.push( torrents[i].id() );
 		this.sendRequest( o, function( ) {
-		  remote._controller.refreshTorrents( 'recently-active' );
+		  remote._controller.refreshTorrents();
 		} );
 	},
 	
@@ -192,7 +192,7 @@ TransmissionRemote.prototype =
 			for( var i=0, len=torrents.length; i<len; ++i )
 				o.arguments.ids.push( torrents[i].id() );
 		this.sendRequest( o, function( ) {
-			remote._controller.refreshTorrents( 'recently-active' );
+			remote._controller.refreshTorrents();
 		} );
 	},
 	verifyTorrents: function( torrents ) {
@@ -209,7 +209,7 @@ TransmissionRemote.prototype =
 		};
 		
 		this.sendRequest(o, function() {
-			remote._controller.refreshTorrents( 'recently-active' );
+			remote._controller.refreshTorrents();
 		} );
 	},
 	savePrefs: function( args ) {

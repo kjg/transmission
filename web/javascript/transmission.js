@@ -665,7 +665,7 @@ Transmission.prototype =
 			if( !this[Prefs._RefreshRate] )
 			     this[Prefs._RefreshRate] = 5;
 			remote = this.remote;
-			this._periodic_refresh = setInterval(function(){ tr.refreshTorrents( 'recently-active' ); }, this[Prefs._RefreshRate] * 1000 );
+			this._periodic_refresh = setInterval(function(){ tr.refreshTorrents(); }, this[Prefs._RefreshRate] * 1000 );
 		} else {
 			clearInterval(this._periodic_refresh);
 			this._periodic_refresh = null;
@@ -1090,9 +1090,9 @@ Transmission.prototype =
 		this.setFilter( Prefs._FilterAll );
 	},
 
-	refreshTorrents: function( torrent_ids ) {
+	refreshTorrents: function() {
     var tr = this;
-		this.remote.getUpdatedDataFor(torrent_ids, function(active, removed){ tr.updateTorrentsData(active, removed); });
+		this.remote.getUpdatedDataFor('currently-active', function(active, removed){ tr.updateTorrentsData(active, removed); });
 	},
 
 	updateTorrentsData: function( active, removed_ids ) {
@@ -1245,7 +1245,7 @@ Transmission.prototype =
 				args.dataType = 'xml';
 				args.iframe = true;
 				args.success = function( data ) {
-					tr.refreshTorrents( 'recently-active' );
+					tr.refreshTorrents();
 					tr.togglePeriodicRefresh( true );
 				};
 				tr.togglePeriodicRefresh( false );
