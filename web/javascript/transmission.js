@@ -1092,7 +1092,7 @@ Transmission.prototype =
 
 	refreshTorrents: function() {
     var tr = this;
-		this.remote.getUpdatedDataFor('currently-active', function(active, removed){ tr.updateTorrentsData(active, removed); });
+		this.remote.getUpdatedDataFor('recently-active', function(active, removed){ tr.updateTorrentsData(active, removed); });
 	},
 
 	updateTorrentsData: function( active, removed_ids ) {
