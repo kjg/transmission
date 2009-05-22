@@ -1098,13 +1098,19 @@ Transmission.prototype =
 	updateTorrentsData: function( active, removed_ids ) {
 		var tr = this;
 		var new_torrent_ids = [];
+		var refresh_files_for = [];
 		jQuery.each( active, function() {
 			var t = Torrent.lookup(tr._torrents, this.id);
-			if (t)
+			if (t){
 		    t.refresh(this);
+		    if(t.isSelected())
+		      refresh_files_for.push(t.id());
+		  }
 		  else
 		    new_torrent_ids.push(this.id);
 		} );
+
+    tr.remote.loadTorrentFiles( refresh_files_for );
 
     if(new_torrent_ids.length > 0)
       tr.remote.getInitialDataFor(new_torrent_ids, function(torrents){ tr.addTorrents(torrents) } );
