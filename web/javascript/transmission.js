@@ -664,19 +664,11 @@ Transmission.prototype =
 			if( !this[Prefs._RefreshRate] )
 			     this[Prefs._RefreshRate] = 5;
 			remote = this.remote;
-			this._periodic_refresh = setInterval(function(){ tr.periodicRefresh() }, this[Prefs._RefreshRate] * 1000 );
+			this._periodic_refresh = setInterval(function(){ tr.refreshTorrents() }, this[Prefs._RefreshRate] * 1000 );
 		} else {
 			clearInterval(this._periodic_refresh);
 			this._periodic_refresh = null;
 		}
-	},
-	
-	periodicRefresh: function() {
-	 console.log(this)
-		if (!this._periodicRefreshIterations)
-			this._periodicRefreshIterations = 0;
-		
-		//TODO call referesh
 	},
 	
 	scheduleFileRefresh: function() {
@@ -1097,6 +1089,12 @@ Transmission.prototype =
 		this.setFilter( Prefs._FilterAll );
 	},
 
+	refreshTorrents: function() {
+    tr = this;
+    torrent_ids = jQuery.map(this._torrents, function(t) { return t.id(); } );
+		this.remote.getUpdatedDataFor(torrent_ids, function(data){ tr.updateTorrentsData(data) });
+	},
+
 	updateTorrentsData: function( torrent_list ) {
 		var tr = this;
 		jQuery.each( torrent_list, function() {
@@ -1112,14 +1110,14 @@ Transmission.prototype =
 
   processRemoteSync: function( remote_torrent_ids ) {
     var tr = this;
-    var removed_any = false;
+    var removedAny = false;
 
     //remove no-longer existing torrents
     $.each(tr._torrents, function(){
       var torrent = this;
       if($.inArray(torrent.id(), remote_torrent_ids) == -1){
         tr.deleteTorrent(torrent)
-        removed_any = true;
+        removedAny = true;
       }
     });
 
@@ -1139,8 +1137,6 @@ Transmission.prototype =
 		}
 
     this.refilter( );
-
-    //TODO: this.updateTorrentsData( torrent_list );
   },
 
   addTorrents: function( new_torrents ){

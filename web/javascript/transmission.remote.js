@@ -129,7 +129,23 @@ TransmissionRemote.prototype =
 
     this.sendRequest( o, function(data){ callback(data)} );
   },
-	
+
+  getUpdatedDataFor: function(torrent_ids, callback) {
+		var o = {
+			method: 'torrent-get',
+			arguments: {
+		    'ids': torrent_ids,
+		    fields: [  'id', 'downloadedEver', 'error', 'errorString',
+				'eta', 'haveUnchecked', 'haveValid', 'leechers', 'leftUntilDone',
+				'peersConnected', 'peersGettingFromUs', 'peersSendingToUs',
+				'rateDownload', 'rateUpload', 'seeders',
+				'status', 'swarmSpeed', 'uploadedEver' ]
+			}
+		};
+
+    this.sendRequest( o, function(data){ callback(data.arguments.torrents)} );
+  },
+
 	loadTorrentFiles: function( torrent_ids ) {
 		var tr = this._controller;
 		this.sendRequest( {
