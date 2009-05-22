@@ -96,27 +96,10 @@ TransmissionRemote.prototype =
 		} );
 	},
 
-  getTorrentIds: function(callback) {
-    var tr = this._controller;
-
-		var o = {
-			method: 'torrent-get',
-			arguments: { fields: [ 'id' ] }
-		};
-
-		this.sendRequest( o, function(data) {
-		  var ids = [];
-		  $.each(data.arguments.torrents, function(){ ids.push(this.id) });
-			if(typeof callback == "function")
-		    callback(ids)
-		} );
-  },
-
   getInitialDataFor: function(torrent_ids, callback) {
 		var o = {
 			method: 'torrent-get',
 			arguments: {
-		    'ids': torrent_ids,
 		    fields: [ 'addedDate', 'announceURL', 'comment', 'creator',
 				'dateCreated', 'downloadedEver', 'error', 'errorString',
 				'eta', 'hashString', 'haveUnchecked', 'haveValid', 'id',
@@ -127,7 +110,10 @@ TransmissionRemote.prototype =
 			}
 		};
 
-    this.sendRequest( o, function(data){ callback(data)} );
+    if(torrent_ids)
+      o.arguments.ids = torrent_ids;
+
+    this.sendRequest( o, function(data){ callback(data.arguments.torrents)} );
   },
 
   getUpdatedDataFor: function(torrent_ids, callback) {
@@ -143,7 +129,7 @@ TransmissionRemote.prototype =
 			}
 		};
 
-    this.sendRequest( o, function(data){ callback(data.arguments.torrents)} );
+    this.sendRequest( o, function(data){ callback(data.arguments.torrents, data.arguments.removed)} );
   },
 
 	loadTorrentFiles: function( torrent_ids ) {
@@ -180,9 +166,7 @@ TransmissionRemote.prototype =
 			for( var i=0, len=torrents.length; i<len; ++i )
 				o.arguments.ids.push( torrents[i].id() );
 		this.sendRequest( o, function( ) {
-		  if(method.match(/remove/))
-		    remote._controller.syncTorrentsToRemote();
-		  remote._controller.refreshTorrents( o.arguments.ids );
+		  remote._controller.refreshTorrents( 'recently-active' );
 		} );
 	},
 	
@@ -209,7 +193,7 @@ TransmissionRemote.prototype =
 			for( var i=0, len=torrents.length; i<len; ++i )
 				o.arguments.ids.push( torrents[i].id() );
 		this.sendRequest( o, function( ) {
-			remote._controller.syncTorrentsToRemote();
+			remote._controller.refreshTorrents();
 		} );
 	},
 	verifyTorrents: function( torrents ) {
@@ -226,7 +210,7 @@ TransmissionRemote.prototype =
 		};
 		
 		this.sendRequest(o, function() {
-			remote._controller.syncTorrentsToRemote();
+			remote._controller.refreshTorrents( 'recently-active' );
 		} );
 	},
 	savePrefs: function( args ) {
