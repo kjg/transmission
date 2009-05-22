@@ -1132,7 +1132,7 @@ Transmission.prototype =
 
     tr.remote.getInitialDataFor(new_torrent_ids, function(data){ tr.addTorrents(data.arguments.torrents) } );
 
-		if( ( new_torrents.length != 0 ) || removedAny ) {
+		if( ( new_torrent_ids.length != 0 ) || removedAny ) {
 			this.hideiPhoneAddressbar();
 			this.deselectAll( true );
 		}
