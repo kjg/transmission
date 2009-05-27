@@ -2437,7 +2437,7 @@ static void sleepCallback(void * controller, io_service_t y, natural_t messageTy
     path = [path stringByExpandingTildeInPath];
     
     NSArray * importedNames;
-    if (!(importedNames = [[NSFileManager defaultManager] directoryContentsAtPath: path]))
+    if (!(importedNames = [[NSFileManager defaultManager] contentsOfDirectoryAtPath: path error: NULL]))
         return;
     
     //only check files that have not been checked yet
@@ -2449,32 +2449,31 @@ static void sleepCallback(void * controller, io_service_t y, natural_t messageTy
         fAutoImportedNames = [[NSMutableArray alloc] init];
     [fAutoImportedNames setArray: importedNames];
     
-    for (NSInteger i = [newNames count] - 1; i >= 0; i--)
-    {
-        NSString * file = [newNames objectAtIndex: i];
-        if ([[file pathExtension] caseInsensitiveCompare: @"torrent"] != NSOrderedSame)
-            [newNames removeObjectAtIndex: i];
-        else
-            [newNames replaceObjectAtIndex: i withObject: [path stringByAppendingPathComponent: file]];
-    }
-    
     for (NSString * file in newNames)
     {
+        if ([file hasPrefix: @"."])
+            continue;
+        
+        NSString * fullFile = [path stringByAppendingPathComponent: file];
+        
+        if (![[[NSWorkspace sharedWorkspace] typeOfFile: fullFile error: NULL] isEqualToString: @"org.bittorrent.torrent"])
+            continue;
+        
         tr_ctor * ctor = tr_ctorNew(fLib);
-        tr_ctorSetMetainfoFromFile(ctor, [file UTF8String]);
+        tr_ctorSetMetainfoFromFile(ctor, [fullFile UTF8String]);
         
         switch (tr_torrentParse(ctor, NULL))
         {
             case TR_OK:
-                [self openFiles: [NSArray arrayWithObject: file] addType: ADD_AUTO forcePath: nil];
+                [self openFiles: [NSArray arrayWithObject: fullFile] addType: ADD_AUTO forcePath: nil];
                 
                 [GrowlApplicationBridge notifyWithTitle: NSLocalizedString(@"Torrent File Auto Added", "Growl notification title")
-                    description: [file lastPathComponent] notificationName: GROWL_AUTO_ADD iconData: nil priority: 0 isSticky: NO
+                    description: file notificationName: GROWL_AUTO_ADD iconData: nil priority: 0 isSticky: NO
                     clickContext: nil];
                 break;
             
             case TR_EINVALID:
-                [fAutoImportedNames removeObject: [file lastPathComponent]];
+                [fAutoImportedNames removeObject: file];
         }
         
         tr_ctorFree(ctor);
@@ -2699,21 +2698,18 @@ static void sleepCallback(void * controller, io_service_t y, natural_t messageTy
         NSArray * files = [pasteboard propertyListForType: NSFilenamesPboardType];
         for (NSString * file in files)
         {
-            if ([[file pathExtension] caseInsensitiveCompare: @"torrent"] == NSOrderedSame)
+            if ([[[NSWorkspace sharedWorkspace] typeOfFile: file error: NULL] isEqualToString: @"org.bittorrent.torrent"])
             {
+                torrent = YES;
                 tr_ctor * ctor = tr_ctorNew(fLib);
                 tr_ctorSetMetainfoFromFile(ctor, [file UTF8String]);
-                switch (tr_torrentParse(ctor, NULL))
+                if (tr_torrentParse(ctor, NULL) == TR_OK)
                 {
-                    case TR_OK:
-                        if (!fOverlayWindow)
-                            fOverlayWindow = [[DragOverlayWindow alloc] initWithLib: fLib forWindow: fWindow];
-                        [fOverlayWindow setTorrents: files];
-                        
-                        return NSDragOperationCopy;
+                    if (!fOverlayWindow)
+                        fOverlayWindow = [[DragOverlayWindow alloc] initWithLib: fLib forWindow: fWindow];
+                    [fOverlayWindow setTorrents: files];
                     
-                    case TR_EDUPLICATE:
-                        torrent = YES;
+                    return NSDragOperationCopy;
                 }
                 tr_ctorFree(ctor);
             }
@@ -2759,24 +2755,17 @@ static void sleepCallback(void * controller, io_service_t y, natural_t messageTy
         BOOL torrent = NO, accept = YES;
         
         //create an array of files that can be opened
-        NSMutableArray * filesToOpen = [[NSMutableArray alloc] init];
         NSArray * files = [pasteboard propertyListForType: NSFilenamesPboardType];
+        NSMutableArray * filesToOpen = [NSMutableArray arrayWithCapacity: [files count]];
         for (NSString * file in files)
         {
-            if ([[file pathExtension] caseInsensitiveCompare: @"torrent"] == NSOrderedSame)
+            if ([[[NSWorkspace sharedWorkspace] typeOfFile: file error: NULL] isEqualToString: @"org.bittorrent.torrent"])
             {
+                torrent = YES;
                 tr_ctor * ctor = tr_ctorNew(fLib);
                 tr_ctorSetMetainfoFromFile(ctor, [file UTF8String]);
-                switch (tr_torrentParse(ctor, NULL))
-                {
-                    case TR_OK:
-                        [filesToOpen addObject: file];
-                        torrent = YES;
-                        break;
-                        
-                    case TR_EDUPLICATE:
-                        torrent = YES;
-                }
+                if (tr_torrentParse(ctor, NULL) == TR_OK)
+                    [filesToOpen addObject: file];
                 tr_ctorFree(ctor);
             }
         }
@@ -2790,7 +2779,6 @@ static void sleepCallback(void * controller, io_service_t y, natural_t messageTy
             else
                 accept = NO;
         }
-        [filesToOpen release];
         
         return accept;
     }
