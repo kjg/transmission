@@ -619,7 +619,9 @@ torrentRealInit( tr_torrent * tor, const tr_ctor * ctor )
     if( !( loaded & TR_FR_SPEEDLIMIT ) )
     {
         tr_torrentUseSpeedLimit( tor, TR_UP, FALSE );
+        tr_torrentSetSpeedLimit( tor, TR_UP, tr_sessionGetSpeedLimit( tor->session, TR_UP ) );
         tr_torrentUseSpeedLimit( tor, TR_DOWN, FALSE );
+        tr_torrentSetSpeedLimit( tor, TR_DOWN, tr_sessionGetSpeedLimit( tor->session, TR_DOWN ) );
         tr_torrentUseSessionLimits( tor, TRUE );
     }
 
@@ -843,6 +845,7 @@ tr_torrentStat( tr_torrent * tor )
     int                     usableSeeds = 0;
     uint64_t                now;
     double                  downloadedForRatio, seedRatio=0;
+    double                  d;
     tr_bool                 checkSeedRatio;
 
     if( !tor )
@@ -881,11 +884,12 @@ tr_torrentStat( tr_torrent * tor )
                             s->peersFrom );
 
     now = tr_date( );
+    d = tr_peerMgrGetWebseedSpeed( tor, now );
     s->swarmSpeed         = tr_rcRate( &tor->swarmSpeed, now );
     s->rawUploadSpeed     = tr_bandwidthGetRawSpeed  ( tor->bandwidth, now, TR_UP );
-    s->rawDownloadSpeed   = tr_bandwidthGetRawSpeed  ( tor->bandwidth, now, TR_DOWN );
     s->pieceUploadSpeed   = tr_bandwidthGetPieceSpeed( tor->bandwidth, now, TR_UP );
-    s->pieceDownloadSpeed = tr_bandwidthGetPieceSpeed( tor->bandwidth, now, TR_DOWN );
+    s->rawDownloadSpeed   = d + tr_bandwidthGetRawSpeed  ( tor->bandwidth, now, TR_DOWN );
+    s->pieceDownloadSpeed = d + tr_bandwidthGetPieceSpeed( tor->bandwidth, now, TR_DOWN );
 
     usableSeeds += tor->info.webseedCount;
 
