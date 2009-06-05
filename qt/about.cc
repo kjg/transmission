@@ -7,7 +7,7 @@
  * This exemption does not extend to derived works not owned by
  * the Transmission project.
  *
- * $Id:$
+ * $Id$
  */
 
 #include <QDialogButtonBox>
@@ -89,6 +89,6 @@ AboutDialog :: showCredits( )
     QMessageBox::about( this, tr( "Credits" ),
         "Charles Kerr (Backend; Daemon; GTK+; Qt)\n"
         "Michell Livingston (Backend; OS X)\n"
-        "Eric Petit (Backend; OS X)" );
+        "Kevin Glowacz (Web client)" );
 }
 

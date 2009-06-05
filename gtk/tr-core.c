@@ -1315,7 +1315,7 @@ readResponseIdle( void * vresponse )
     struct pending_request_data * data;
 
     response = vresponse;
-    tr_jsonParse( response->data, response->len, &top, NULL );
+    tr_jsonParse( NULL, response->data, response->len, &top, NULL );
     tr_bencDictFindInt( &top, "tag", &intVal );
     tag = (int)intVal;
 
@@ -1444,7 +1444,7 @@ tr_core_exec_json( TrCore * core, const char * json )
 void
 tr_core_exec( TrCore * core, const tr_benc * top )
 {
-    char * json = tr_bencToJSON( top, FALSE );
+    char * json = tr_bencToStr( top, TR_FMT_JSON_LEAN, NULL );
     tr_core_exec_json( core, json );
     tr_free( json );
 }

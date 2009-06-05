@@ -135,7 +135,7 @@ tr_dhtInit(tr_session *ss)
         dht_debug = stderr;
 
     dat_file = tr_buildPath( ss->configDir, "dht.dat", NULL );
-    rc = tr_bencLoadFile(dat_file, &benc);
+    rc = tr_bencLoadFile( &benc, TR_FMT_BENC, dat_file );
     tr_free( dat_file );
     if(rc == 0) {
         if(( have_id = tr_bencDictFindRaw( &benc, "id", &raw, &len ) && len==20 ))
@@ -215,7 +215,8 @@ tr_dhtUninit(tr_session *ss)
         tr_bencDictAddRaw( &benc, "id", myid, 20 );
         tr_bencDictAddRaw( &benc, "nodes", compact, j );
         dat_file = tr_buildPath( ss->configDir, "dht.dat", NULL );
-        tr_bencSaveFile( dat_file, &benc );
+        tr_bencToFile( &benc, TR_FMT_BENC, dat_file );
+        tr_bencFree( &benc );
         tr_free( dat_file );
     }
 
@@ -338,17 +339,21 @@ callback( void *ignore UNUSED, int event,
 int
 tr_dhtAnnounce(tr_torrent *tor, tr_bool announce)
 {
+    int rc;
+
     if( !tr_torrentAllowsDHT( tor ) )
         return -1;
 
     if( tr_dhtStatus( tor->session, NULL ) < TR_DHT_POOR )
         return 0;
 
-    dht_search( dht_socket, tor->info.hash,
-                announce ? tr_sessionGetPeerPort(session) : 0,
-                callback, NULL);
+    rc = dht_search( dht_socket, tor->info.hash,
+                     announce ? tr_sessionGetPeerPort(session) : 0,
+                     callback, NULL);
 
-    tor->dhtAnnounceInProgress = TRUE;
+    if( rc >= 1 )
+        tor->dhtAnnounceInProgress = TRUE;
+
     return 1;
 }
 
