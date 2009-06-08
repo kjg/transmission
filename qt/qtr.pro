@@ -13,10 +13,11 @@ PKGCONFIG = fontconfig libcurl openssl
 
 TRANSMISSION_TOP = ..
 INCLUDEPATH += $${TRANSMISSION_TOP}
-LIBS += $${TRANSMISSION_TOP}/build/debug/libtransmission.a -levent
+LIBS += $${TRANSMISSION_TOP}/build/debug/libtransmission.a
 LIBS += $${TRANSMISSION_TOP}/build/debug/libdht.a
 LIBS += $${TRANSMISSION_TOP}/build/debug/libminiupnp.a
 LIBS += $${TRANSMISSION_TOP}/build/debug/libnatpmp.a
+LIBS += $${TRANSMISSION_TOP}/build/debug/libevent.a
 
 TRANSLATIONS += transmission_en.ts
 
