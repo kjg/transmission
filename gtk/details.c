@@ -115,14 +115,20 @@ getTorrents( struct DetailsImpl * d, int * setmeCount )
     int n = g_slist_length( d->ids );
     int torrentCount = 0;
     tr_session * session = tr_core_session( d->core );
-    tr_torrent ** torrents = g_new( tr_torrent*, n );
-    GSList * l;
+    tr_torrent ** torrents = NULL;
 
-    for( l=d->ids; l!=NULL; l=l->next ) {
-        const int id = GPOINTER_TO_INT( l->data );
-        tr_torrent * tor = tr_torrentFindFromId( session, id );
-        if( tor )
-            torrents[torrentCount++] = tor;
+    if( session != NULL )
+    {
+        GSList * l;
+
+        torrents = g_new( tr_torrent*, n );
+
+        for( l=d->ids; l!=NULL; l=l->next ) {
+            const int id = GPOINTER_TO_INT( l->data );
+            tr_torrent * tor = tr_torrentFindFromId( session, id );
+            if( tor )
+                torrents[torrentCount++] = tor;
+        }
     }
 
     *setmeCount = torrentCount;
@@ -1978,7 +1984,7 @@ response_cb( GtkDialog * dialog, int a UNUSED, gpointer b UNUSED )
 {
     GtkWidget * w = GTK_WIDGET( dialog );
     torrent_inspector_set_torrents( w, NULL );
-    gtk_widget_hide( w );
+    gtk_widget_destroy( w );
 }
 
 GtkWidget*

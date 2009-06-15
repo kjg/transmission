@@ -209,7 +209,7 @@ myDebug( const char * file, int line,
     {
         va_list           args;
         char              timestr[64];
-        struct evbuffer * buf = tr_getBuffer( );
+        struct evbuffer * buf = evbuffer_new( );
         char *            base = tr_basename( file );
 
         evbuffer_add_printf( buf, "[%s] %s - %s [%s]: ",
@@ -225,7 +225,7 @@ myDebug( const char * file, int line,
         fwrite( EVBUFFER_DATA( buf ), 1, EVBUFFER_LENGTH( buf ), fp );
 
         tr_free( base );
-        tr_releaseBuffer( buf );
+        evbuffer_free( buf );
     }
 }
 
@@ -543,12 +543,16 @@ tr_generateAllowedSet( tr_piece_index_t * setmePieces,
 
     if( addr->type == TR_AF_INET )
     {
-        uint8_t w[SHA_DIGEST_LENGTH + 4];
+        uint8_t w[SHA_DIGEST_LENGTH + 4], *walk=w;
         uint8_t x[SHA_DIGEST_LENGTH];
 
-        *(uint32_t*)w = ntohl( htonl( addr->addr.addr4.s_addr ) & 0xffffff00 );   /* (1) */
-        memcpy( w + 4, infohash, SHA_DIGEST_LENGTH );                /* (2) */
-        tr_sha1( x, w, sizeof( w ), NULL );                          /* (3) */
+        uint32_t ui32 = ntohl( htonl( addr->addr.addr4.s_addr ) & 0xffffff00 );   /* (1) */
+        memcpy( w, &ui32, sizeof( uint32_t ) );
+        walk += sizeof( uint32_t );
+        memcpy( walk, infohash, SHA_DIGEST_LENGTH );                 /* (2) */
+        walk += SHA_DIGEST_LENGTH;
+        tr_sha1( x, w, walk-w, NULL );                               /* (3) */
+        assert( sizeof( w ) == walk-w );
 
         while( setSize<desiredSetSize )
         {
@@ -1736,9 +1740,10 @@ fillOutputBuffer( tr_peermsgs * msgs, time_t now )
             tr_peerIoWriteUint32( io, out, req.offset );
 
             err = tr_ioRead( msgs->torrent, req.index, req.offset, req.length, EVBUFFER_DATA(out)+EVBUFFER_LENGTH(out) );
-            if( err ) /* peer needs a reject message */
+            if( err )
             {
-                protocolSendReject( msgs, &req );
+                if( fext )
+                    protocolSendReject( msgs, &req );
             }
             else
             {

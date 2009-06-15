@@ -332,26 +332,23 @@ sendYa( tr_handshake * handshake )
 {
     int               len;
     const uint8_t *   public_key;
-    struct evbuffer * outbuf = tr_getBuffer( );
-    uint8_t           pad_a[PadA_MAXLEN];
+    char              outbuf[ KEY_LEN + PadA_MAXLEN ], *walk=outbuf;
 
     /* add our public key (Ya) */
     public_key = tr_cryptoGetMyPublicKey( handshake->crypto, &len );
     assert( len == KEY_LEN );
     assert( public_key );
-    evbuffer_add( outbuf, public_key, len );
+    memcpy( walk, public_key, len );
+    walk += len;
 
     /* add some bullshit padding */
     len = tr_cryptoRandInt( PadA_MAXLEN );
-    tr_cryptoRandBuf( pad_a, len );
-    evbuffer_add( outbuf, pad_a, len );
+    tr_cryptoRandBuf( walk, len );
+    walk += len;
 
     /* send it */
     setReadState( handshake, AWAITING_YB );
-    tr_peerIoWriteBuf( handshake->io, outbuf, FALSE );
-
-    /* cleanup */
-    tr_releaseBuffer( outbuf );
+    tr_peerIoWrite( handshake->io, outbuf, walk-outbuf, FALSE );
 }
 
 static uint32_t
@@ -444,7 +441,7 @@ readYb( tr_handshake *    handshake,
 
     /* now send these: HASH('req1', S), HASH('req2', SKEY) xor HASH('req3', S),
      * ENCRYPT(VC, crypto_provide, len(PadC), PadC, len(IA)), ENCRYPT(IA) */
-    outbuf = tr_getBuffer( );
+    outbuf = evbuffer_new( );
 
     /* HASH('req1', S) */
     {
@@ -501,7 +498,7 @@ readYb( tr_handshake *    handshake,
     tr_peerIoWriteBuf( handshake->io, outbuf, FALSE );
 
     /* cleanup */
-    tr_releaseBuffer( outbuf );
+    evbuffer_free( outbuf );
     return READ_LATER;
 }
 
@@ -935,7 +932,7 @@ readIA( tr_handshake *    handshake,
     **/
 
     tr_cryptoEncryptInit( handshake->crypto );
-    outbuf = tr_getBuffer( );
+    outbuf = evbuffer_new( );
 
     dbgmsg( handshake, "sending vc" );
     /* send VC */
@@ -955,7 +952,7 @@ readIA( tr_handshake *    handshake,
     else
     {
         dbgmsg( handshake, "peer didn't offer an encryption mode we like." );
-        tr_releaseBuffer( outbuf );
+        evbuffer_free( outbuf );
         return tr_handshakeDone( handshake, FALSE );
     }
 
@@ -987,7 +984,7 @@ readIA( tr_handshake *    handshake,
 
     /* send it out */
     tr_peerIoWriteBuf( handshake->io, outbuf, FALSE );
-    tr_releaseBuffer( outbuf );
+    evbuffer_free( outbuf );
 
     /* now await the handshake */
     setState( handshake, AWAITING_PAYLOAD_STREAM );

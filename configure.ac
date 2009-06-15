@@ -81,12 +81,6 @@ fi
 AC_HEADER_STDC
 AC_HEADER_TIME
 
-AC_MSG_CHECKING([for fallocate])
-AC_TRY_LINK([#include <linux/falloc.h>],
-            [return fallocate(-1,0,0,0);],
-            [AC_DEFINE([HAVE_FALLOCATE],[1],[Defined if fallocate() exists])
-             AC_MSG_RESULT([yes])],
-            [AC_MSG_RESULT([no])])
 AC_CHECK_FUNCS([lrintf strlcpy daemon dirname basename daemon strcasecmp localtime_r posix_fallocate memmem])
 AC_PROG_INSTALL
 AC_PROG_MAKE_SET
@@ -185,15 +179,15 @@ if test "x$libevent_found" = "xyes" ; then
     fi
 fi
 if test "x$libevent_source" = "xbundled"; then
-    AC_MSG_NOTICE([using our own libevent from third-party/libevent/])
-    AC_MSG_NOTICE([if you are cross-compiling this is probably NOT what you want.])
-    LIBEVENT_CPPFLAGS="-I\$(top_srcdir)/third-party/libevent -I\$(top_builddir)/third-party/libevent"
+    AC_MSG_WARN([using our own libevent from third-party/libevent/])
+    AC_MSG_WARN([if you are cross-compiling this is probably NOT what you want.])
+    LIBEVENT_CFLAGS="-I\$(top_srcdir)/third-party/libevent -I\$(top_builddir)/third-party/libevent"
     LIBEVENT_LIBS="\$(top_builddir)/third-party/libevent/libevent.la"
 else
-    LIBEVENT_CPPFLAGS=""
+    LIBEVENT_CFLAGS=""
     LIBEVENT_LIBS="-levent -lrt"
 fi
-AC_SUBST(LIBEVENT_CPPFLAGS)
+AC_SUBST(LIBEVENT_CFLAGS)
 AC_SUBST(LIBEVENT_LIBS)
 
 

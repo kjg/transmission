@@ -35,12 +35,6 @@ uint8_t*       tr_peerIdNew( void );
 
 const uint8_t* tr_getPeerId( void );
 
-struct tr_metainfo_lookup
-{
-    char    hashString[2 * SHA_DIGEST_LENGTH + 1];
-    char *  filename;
-};
-
 struct tr_address;
 struct tr_bandwidth;
 struct tr_bindsockets;
@@ -122,11 +116,10 @@ struct tr_session
     tr_rpc_func                  rpc_func;
     void *                       rpc_func_user_data;
 
-    struct tr_stats_handle *     sessionStats;
-    struct tr_tracker_handle *   tracker;
+    struct tr_stats_handle     * sessionStats;
+    struct tr_tracker_handle   * tracker;
 
-    struct tr_metainfo_lookup *  metainfoLookup;
-    int                          metainfoLookupCount;
+    tr_benc                    * metainfoLookup;
 
     struct event               * altTimer;
 

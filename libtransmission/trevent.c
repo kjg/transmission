@@ -235,8 +235,8 @@ libeventThreadFunc( void * veh )
     event_set_log_callback( logFunc );
 
     /* loop until all the events are done */
-    event_dispatch( );
-    assert( eh->die );
+    while( !eh->die )
+        event_dispatch( );
 
     /* shut down the thread */
     tr_lockFree( eh->lock );
@@ -303,10 +303,12 @@ timerCallback( int    fd UNUSED,
     more = ( *timer->func )( timer->user_data );
     timer->inCallback = 0;
 
-    if( more )
-        evtimer_add( &timer->event, &timer->tv );
-    else
+    if( !more )
         tr_timerFree( &timer );
+    else {
+        assert( tr_isTimeval( &timer->tv ) );
+        evtimer_add( &timer->event, &timer->tv );
+    }
 }
 
 void
