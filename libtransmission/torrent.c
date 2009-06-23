@@ -114,7 +114,7 @@ tr_torrentSetSpeedLimit( tr_torrent * tor, tr_direction dir, int KiB_sec )
     assert( tr_isTorrent( tor ) );
     assert( tr_isDirection( dir ) );
 
-    tr_bandwidthSetDesiredSpeed( &tor->bandwidth, dir, KiB_sec );
+    tr_bandwidthSetDesiredSpeed( tor->bandwidth, dir, KiB_sec );
 }
 
 int
@@ -123,7 +123,7 @@ tr_torrentGetSpeedLimit( const tr_torrent * tor, tr_direction dir )
     assert( tr_isTorrent( tor ) );
     assert( tr_isDirection( dir ) );
 
-    return tr_bandwidthGetDesiredSpeed( &tor->bandwidth, dir );
+    return tr_bandwidthGetDesiredSpeed( tor->bandwidth, dir );
 }
 
 void
@@ -132,7 +132,7 @@ tr_torrentUseSpeedLimit( tr_torrent * tor, tr_direction dir, tr_bool do_use )
     assert( tr_isTorrent( tor ) );
     assert( tr_isDirection( dir ) );
 
-    tr_bandwidthSetLimited( &tor->bandwidth, dir, do_use );
+    tr_bandwidthSetLimited( tor->bandwidth, dir, do_use );
 }
 
 tr_bool
@@ -141,7 +141,7 @@ tr_torrentUsesSpeedLimit( const tr_torrent * tor, tr_direction dir )
     assert( tr_isTorrent( tor ) );
     assert( tr_isDirection( dir ) );
 
-    return tr_bandwidthIsLimited( &tor->bandwidth, dir );
+    return tr_bandwidthIsLimited( tor->bandwidth, dir );
 }
 
 void
@@ -149,8 +149,8 @@ tr_torrentUseSessionLimits( tr_torrent * tor, tr_bool doUse )
 {
     assert( tr_isTorrent( tor ) );
 
-    tr_bandwidthHonorParentLimits( &tor->bandwidth, TR_UP, doUse );
-    tr_bandwidthHonorParentLimits( &tor->bandwidth, TR_DOWN, doUse );
+    tr_bandwidthHonorParentLimits( tor->bandwidth, TR_UP, doUse );
+    tr_bandwidthHonorParentLimits( tor->bandwidth, TR_DOWN, doUse );
 }
 
 tr_bool
@@ -158,7 +158,7 @@ tr_torrentUsesSessionLimits( const tr_torrent * tor )
 {
     assert( tr_isTorrent( tor ) );
 
-    return tr_bandwidthAreParentLimitsHonored( &tor->bandwidth, TR_UP );
+    return tr_bandwidthAreParentLimitsHonored( tor->bandwidth, TR_UP );
 }
 
 /***
@@ -542,7 +542,7 @@ torrentRealInit( tr_torrent * tor, const tr_ctor * ctor )
 
     randomizeTiers( info );
 
-    tr_bandwidthConstruct( &tor->bandwidth, session, session->bandwidth );
+    tor->bandwidth = tr_bandwidthNew( session, session->bandwidth );
 
     tor->blockSize = getBlockSize( info->pieceSize );
 
@@ -885,10 +885,10 @@ tr_torrentStat( tr_torrent * tor )
     now = tr_date( );
     d = tr_peerMgrGetWebseedSpeed( tor, now );
     s->swarmSpeed         = tr_rcRate( &tor->swarmSpeed, now );
-    s->rawUploadSpeed     = tr_bandwidthGetRawSpeed  ( &tor->bandwidth, now, TR_UP );
-    s->pieceUploadSpeed   = tr_bandwidthGetPieceSpeed( &tor->bandwidth, now, TR_UP );
-    s->rawDownloadSpeed   = d + tr_bandwidthGetRawSpeed  ( &tor->bandwidth, now, TR_DOWN );
-    s->pieceDownloadSpeed = d + tr_bandwidthGetPieceSpeed( &tor->bandwidth, now, TR_DOWN );
+    s->rawUploadSpeed     = tr_bandwidthGetRawSpeed  ( tor->bandwidth, now, TR_UP );
+    s->pieceUploadSpeed   = tr_bandwidthGetPieceSpeed( tor->bandwidth, now, TR_UP );
+    s->rawDownloadSpeed   = d + tr_bandwidthGetRawSpeed  ( tor->bandwidth, now, TR_DOWN );
+    s->pieceDownloadSpeed = d + tr_bandwidthGetPieceSpeed( tor->bandwidth, now, TR_DOWN );
 
     usableSeeds += tor->info.webseedCount;
 
@@ -1210,7 +1210,7 @@ freeTorrent( tr_torrent * tor )
     assert( session->torrentCount >= 1 );
     session->torrentCount--;
 
-    tr_bandwidthDestruct( &tor->bandwidth );
+    tr_bandwidthFree( tor->bandwidth );
 
     tr_metainfoFree( inf );
     tr_free( tor );
@@ -1330,30 +1330,6 @@ tr_torrentVerify( tr_torrent * tor )
 }
 
 static void
-tr_torrentCloseLocalFiles( const tr_torrent * tor )
-{
-    tr_file_index_t i;
-    struct evbuffer * buf = evbuffer_new( );
-
-    assert( tr_isTorrent( tor ) );
-
-    /* FIXME(libevent2) we're just using the evbuffer to build a key here anyway.
-       so we do (tor->info.fileCount * fd.openFileLimit) strcmps for these keys. :/
-       it would be more efficient to remove this code altogether and
-       add "int torrentId;" to "struct tr_openfile", and a new function
-       tr_fdCloseTorrentFiles( tr_session*, int torrentId ) */
-    for( i=0; i<tor->info.fileCount; ++i )
-    {
-        const tr_file * file = &tor->info.files[i];
-        evbuffer_drain( buf, EVBUFFER_LENGTH( buf ) );
-        evbuffer_add_printf( buf, "%s%s%s", tor->downloadDir, TR_PATH_DELIMITER_STR, file->name );
-        tr_fdFileClose( (const char*) EVBUFFER_DATA( buf ) );
-    }
-
-    evbuffer_free( buf );
-}
-
-static void
 stopTorrent( void * vtor )
 {
     tr_torrent * tor = vtor;
@@ -1364,7 +1340,7 @@ stopTorrent( void * vtor )
     tr_peerMgrStopTorrent( tor );
     tr_trackerStop( tor->tracker );
 
-    tr_torrentCloseLocalFiles( tor );
+    tr_fdTorrentClose( tor->uniqueId );
 }
 
 void
@@ -1529,7 +1505,7 @@ tr_torrentRecheckCompleteness( tr_torrent * tor )
 
         tor->completeness = completeness;
         tor->needsSeedRatioCheck = TRUE;
-        tr_torrentCloseLocalFiles( tor );
+        tr_fdTorrentClose( tor->uniqueId );
         fireCompletenessChange( tor, completeness );
 
         if( recentChange && ( completeness == TR_SEED ) )
@@ -1739,7 +1715,7 @@ tr_torrentGetPriority( const tr_torrent * tor )
 {
     assert( tr_isTorrent( tor ) );
 
-    return tor->bandwidth.priority;
+    return tor->bandwidth->priority;
 }
 
 void
@@ -1748,7 +1724,7 @@ tr_torrentSetPriority( tr_torrent * tor, tr_priority_t priority )
     assert( tr_isTorrent( tor ) );
     assert( tr_isPriority( priority ) );
 
-    tor->bandwidth.priority = priority;
+    tor->bandwidth->priority = priority;
 }
 
 /***
@@ -2218,7 +2194,7 @@ tr_torrentDeleteLocalData( tr_torrent * tor, tr_fileFunc fileFunc )
         fileFunc = remove;
 
     /* close all the files because we're about to delete them */
-    tr_torrentCloseLocalFiles( tor );
+    tr_fdTorrentClose( tor->uniqueId );
 
     if( tor->info.fileCount > 1 )
         deleteLocalData( tor, fileFunc );

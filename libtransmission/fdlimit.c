@@ -86,6 +86,7 @@ struct tr_openfile
     tr_bool    isCheckedOut;
     tr_bool    isWritable;
     tr_bool    closeWhenDone;
+    int        torrentId;
     char       filename[MAX_PATH_LENGTH];
     int        fd;
     uint64_t   date;
@@ -182,6 +183,19 @@ preallocateFileFull( const char * filename, uint64_t length )
             success = !posix_fallocate( fd, 0, length );
         }
 # endif
+
+        if( !success ) /* if nothing else works, do it the old-fashioned way */
+        {
+            uint8_t buf[ 4096 ]; 
+            memset( buf, 0, sizeof( buf ) ); 
+            success = TRUE; 
+            while ( success && ( length > 0 ) ) 
+            { 
+                const int thisPass = MIN( length, sizeof( buf ) ); 
+                success = write( fd, buf, thisPass ) == thisPass; 
+                length -= thisPass; 
+            } 
+        }
 
         close( fd );
     }
@@ -328,6 +342,15 @@ TrOpenFile( int                      i,
         return err;
     }
 
+    /* If the file already exists and it's too large, truncate it.
+     * This is a fringe case that happens if a torrent's been updated
+     * and one of the updated torrent's files is smaller.
+     * http://trac.transmissionbt.com/ticket/2228
+     * https://bugs.launchpad.net/ubuntu/+source/transmission/+bug/318249
+     */
+    if( alreadyExisted && ( desiredFileSize < (uint64_t)sb.st_size ) )
+        ftruncate( file->fd, desiredFileSize );
+
     if( doWrite && !alreadyExisted && ( preallocationMode == TR_PREALLOCATE_SPARSE ) )
         preallocateFileSparse( file->fd, desiredFileSize );
 
@@ -367,7 +390,8 @@ fileIsCheckedOut( const struct tr_openfile * o )
 
 /* returns an fd on success, or a -1 on failure and sets errno */
 int
-tr_fdFileCheckout( const char             * folder,
+tr_fdFileCheckout( int                      torrentId,
+                   const char             * folder,
                    const char             * torrentFile,
                    tr_bool                  doWrite,
                    tr_preallocation_mode    preallocationMode,
@@ -377,6 +401,7 @@ tr_fdFileCheckout( const char             * folder,
     struct tr_openfile * o;
     char filename[MAX_PATH_LENGTH];
 
+    assert( torrentId > 0 );
     assert( folder && *folder );
     assert( torrentFile && *torrentFile );
     assert( doWrite == 0 || doWrite == 1 );
@@ -386,14 +411,15 @@ tr_fdFileCheckout( const char             * folder,
 
     tr_lockLock( gFd->lock );
 
-    /* Is it already open? */
-    for( i = 0; i < gFd->openFileLimit; ++i )
+    /* is it already open? */
+    for( i=0; i<gFd->openFileLimit; ++i )
     {
         o = &gFd->openFiles[i];
 
         if( !fileIsOpen( o ) )
             continue;
-
+        if( torrentId != o->torrentId )
+            continue;
         if( strcmp( filename, o->filename ) )
             continue;
 
@@ -409,8 +435,7 @@ tr_fdFileCheckout( const char             * folder,
 
         if( doWrite && !o->isWritable )
         {
-            dbgmsg(
-                "found it!  it's open and available, but isn't writable. closing..." );
+            dbgmsg( "found it!  it's open and available, but isn't writable. closing..." );
             TrCloseFile( i );
             break;
         }
@@ -420,14 +445,13 @@ tr_fdFileCheckout( const char             * folder,
         break;
     }
 
-    dbgmsg(
-        "it's not already open.  looking for an open slot or an old file." );
+    dbgmsg( "it's not already open.  looking for an open slot or an old file." );
     while( winner < 0 )
     {
         uint64_t date = tr_date( ) + 1;
 
         /* look for the file that's been open longest */
-        for( i = 0; i < gFd->openFileLimit; ++i )
+        for( i=0; i<gFd->openFileLimit; ++i )
         {
             o = &gFd->openFiles[i];
 
@@ -482,6 +506,7 @@ tr_fdFileCheckout( const char             * folder,
     }
 
     dbgmsg( "checking out '%s' in slot %d", filename, winner );
+    o->torrentId = torrentId;
     o->isCheckedOut = 1;
     o->closeWhenDone = 0;
     o->date = tr_date( );
@@ -517,10 +542,9 @@ void
 tr_fdFileClose( const char * filename )
 {
     int i;
-
     tr_lockLock( gFd->lock );
 
-    for( i = 0; i < gFd->openFileLimit; ++i )
+    for( i=0; i<gFd->openFileLimit; ++i )
     {
         struct tr_openfile * o = &gFd->openFiles[i];
         if( !fileIsOpen( o ) || strcmp( filename, o->filename ) )
@@ -528,22 +552,33 @@ tr_fdFileClose( const char * filename )
 
         dbgmsg( "tr_fdFileClose closing '%s'", filename );
 
-        if( !o->isCheckedOut )
-        {
-            dbgmsg( "not checked out, so closing it now... '%s'", filename );
-            TrCloseFile( i );
-        }
-        else
-        {
-            dbgmsg(
-                "flagging file '%s', slot #%d to be closed when checked in",
-                gFd->openFiles[i].filename, i );
-            o->closeWhenDone = 1;
-        }
+        assert( !o->isCheckedOut && "this is a test assertion... I *think* this is always true now" );
+
+        TrCloseFile( i );
     }
 
     tr_lockUnlock( gFd->lock );
 }
+
+void
+tr_fdTorrentClose( int torrentId )
+{
+    int i;
+    tr_lockLock( gFd->lock );
+
+    for( i=0; i<gFd->openFileLimit; ++i )
+    {
+        struct tr_openfile * o = &gFd->openFiles[i];
+
+        assert( !o->isCheckedOut && "this is a test assertion... I *think* this is always true now" );
+
+        if( fileIsOpen( o ) && o->torrentId == torrentId )
+            TrCloseFile( i );
+    }
+
+    tr_lockUnlock( gFd->lock );
+}
+
 
 /***
 ****
@@ -611,18 +646,24 @@ tr_fdSocketAccept( int           b,
         /* "The ss_family field of the sockaddr_storage structure will always 
          * align with the family field of any protocol-specific structure." */ 
         if( sock.ss_family == AF_INET ) 
-        { 
-            struct sockaddr_in * sock4 = (struct sockaddr_in *)&sock; 
+        {
+            struct sockaddr_in *si;
+            union { struct sockaddr_storage dummy; struct sockaddr_in si; } s;
+            s.dummy = sock;
+            si = &s.si;
             addr->type = TR_AF_INET; 
-            addr->addr.addr4.s_addr = sock4->sin_addr.s_addr; 
-            *port = sock4->sin_port; 
+            addr->addr.addr4.s_addr = si->sin_addr.s_addr; 
+            *port = si->sin_port; 
         } 
         else 
         { 
-            struct sockaddr_in6 * sock6 = (struct sockaddr_in6 *)&sock; 
+            struct sockaddr_in6 *si;
+            union { struct sockaddr_storage dummy; struct sockaddr_in6 si; } s;
+            s.dummy = sock;
+            si = &s.si;
             addr->type = TR_AF_INET6; 
-            addr->addr.addr6 = sock6->sin6_addr;
-            *port = sock6->sin6_port; 
+            addr->addr.addr6 = si->sin6_addr;
+            *port = si->sin6_port; 
         } 
         ++gFd->socketCount;
     }
@@ -717,4 +758,3 @@ tr_fdGetPeerLimit( void )
 {
     return gFd ? gFd->socketLimit : -1;
 }
-

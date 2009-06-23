@@ -837,7 +837,13 @@ tr_sessionInitImpl( void * vdata )
     dbgmsg( "returning session %p; session->tracker is %p", session, session->tracker );
 
     if( session->isDHTEnabled )
-        tr_dhtInit(session);
+    {
+#ifdef WITHOUT_DHT
+        tr_inf( "DHT disabled by packager." );
+#else
+        tr_dhtInit( session );
+#endif
+    }
 }
 
 /***
@@ -1062,14 +1068,12 @@ setAltTimer( tr_session * session )
 {
     const time_t now = time( NULL );
     struct tm tm;
-    struct timeval tv;
 
     assert( tr_isSession( session ) );
     assert( session->altTimer != NULL );
 
     tr_localtime_r( &now, &tm );
-    tr_timevalSet( &tv, 60-tm.tm_sec, 0 );
-    evtimer_add( session->altTimer, &tv );
+    tr_timerAdd( session->altTimer, 60-tm.tm_sec, 0 );
 }
 
 /* this is called once a minute to:
@@ -1587,6 +1591,16 @@ tr_sessionIsPexEnabled( const tr_session * session )
     assert( tr_isSession( session ) );
 
     return session->isPexEnabled;
+}
+
+tr_bool
+tr_sessionAllowsDHT( const tr_session * session UNUSED )
+{
+#ifdef WITHOUT_DHT
+    return 0;
+#else
+    return tr_sessionIsDHTEnabled( session );
+#endif
 }
 
 tr_bool

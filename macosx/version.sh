@@ -7,8 +7,8 @@
 #         "Z" for unsupported trunk builds,
 #         "0" for stable, supported releases
 # these should be the only two lines you need to change
-PEERID_PREFIX="-TR1710-"
-USERAGENT_PREFIX="1.71"
+PEERID_PREFIX="-TR172Z-"
+USERAGENT_PREFIX="1.72+"
 
 SVN_REVISION=`/opt/local/bin/git rev-parse --short HEAD`
 

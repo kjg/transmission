@@ -17,7 +17,6 @@
 #ifndef TR_TORRENT_H
 #define TR_TORRENT_H 1
 
-#include "bandwidth.h" /* tr_bandwidth */
 #include "completion.h" /* tr_completion */
 #include "ratecontrol.h" /* tr_ratecontrol */
 #include "session.h" /* tr_globalLock(), tr_globalUnlock() */
@@ -173,8 +172,6 @@ struct tr_torrent
     struct tr_bitfield         checkedPieces;
     tr_completeness            completeness;
 
-    struct tr_bandwidth        bandwidth;
-
     struct tr_tracker *        tracker;
     struct tr_publisher_tag *  trackerSubscription;
 
@@ -215,6 +212,8 @@ struct tr_torrent
     tr_torrent *               next;
 
     int                        uniqueId;
+
+    struct tr_bandwidth      * bandwidth;
 
     struct tr_torrent_peers  * torrentPeers;
 
@@ -289,15 +288,20 @@ static TR_INLINE tr_bool tr_torrentIsPrivate( const tr_torrent * tor )
 
 static TR_INLINE tr_bool tr_torrentAllowsPex( const tr_torrent * tor )
 {
-    return ( tor != NULL  ) && tor->session->isPexEnabled && !tr_torrentIsPrivate( tor );
+    return ( tor != NULL )
+        && ( tor->session->isPexEnabled )
+        && ( !tr_torrentIsPrivate( tor ) );
 }
 
 static TR_INLINE tr_bool tr_torrentAllowsDHT( const tr_torrent * tor )
 {
-    return ( tor != NULL  ) && tor->session->isDHTEnabled && !tr_torrentIsPrivate( tor );
+    return ( tor != NULL )
+        && ( tr_sessionAllowsDHT( tor->session ) )
+        && ( !tr_torrentIsPrivate( tor ) );
 }
 
-static TR_INLINE tr_bool tr_torrentIsPieceChecked( const tr_torrent  * tor, tr_piece_index_t i )
+static TR_INLINE tr_bool tr_torrentIsPieceChecked( const tr_torrent  * tor,
+                                                   tr_piece_index_t    i )
 {
     return tr_bitfieldHasFast( &tor->checkedPieces, i );
 }

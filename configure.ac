@@ -3,8 +3,8 @@ dnl STATUS: "X" for prerelease beta builds,
 dnl         "Z" for unsupported trunk builds,
 dnl         "0" for stable, supported releases
 dnl these should be the only two lines you need to change
-m4_define([user_agent_prefix],[1.71])
-m4_define([peer_id_prefix],[-TR1710-])
+m4_define([user_agent_prefix],[1.72+])
+m4_define([peer_id_prefix],[-TR172Z-])
 
 AC_INIT([transmission],
         [user_agent_prefix],
@@ -189,6 +189,28 @@ else
 fi
 AC_SUBST(LIBEVENT_CFLAGS)
 AC_SUBST(LIBEVENT_LIBS)
+
+
+dnl ----------------------------------------------------------------------------
+dnl
+dnl  dht
+
+
+AC_ARG_ENABLE([dht], 
+              AS_HELP_STRING([--disable-dht],[omit DHT support]), 
+              [enable_dht=${enableval}], 
+              [enable_dht=yes]) 
+if test "x$enable_dht" = "xno" ; then 
+    AC_DEFINE([WITHOUT_DHT], 1) 
+    DHT_CFLAGS=""
+    DHT_LIBS=""
+else
+    DHT_CFLAGS="-I\$(top_srcdir)/third-party/dht"
+    DHT_LIBS="\$(top_builddir)/third-party/dht/libdht.a"
+fi
+AM_CONDITIONAL(DHT, test "x$enable_dht" = "xyes") 
+AC_SUBST(DHT_CFLAGS)
+AC_SUBST(DHT_LIBS)
 
 
 dnl ----------------------------------------------------------------------------
@@ -387,6 +409,7 @@ Configuration:
         Source code location:          ${srcdir}
         Compiler:                      ${CXX}
         System or bundled libevent:    ${libevent_source}
+        DHT support:                   ${enable_dht}
 
         Build OS X client:             ${build_mac}
         Build GTK+ client:             ${build_gtk}

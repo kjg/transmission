@@ -50,6 +50,25 @@ THE SOFTWARE.
 #include "utils.h"
 #include "version.h"
 
+#ifdef WITHOUT_DHT
+
+  /* These are the stubs for when we're building without DHT support */
+  int tr_dhtInit( tr_session * session UNUSED ) { return TR_DHT_STOPPED; }
+  void tr_dhtUninit( tr_session * session UNUSED ) { }
+  tr_bool tr_dhtEnabled( const tr_session * session UNUSED ) { return FALSE; }
+  tr_port tr_dhtPort ( const tr_session * sesssion UNUSED ) { return 0; }
+  int tr_dhtStatus( tr_session * session     UNUSED,
+                    int        * setmeCount  UNUSED ) { return TR_DHT_STOPPED; }
+  int tr_dhtAddNode( tr_session * session    UNUSED,
+                     tr_address * addr       UNUSED,
+                     tr_port      port       UNUSED,
+                     tr_bool      bootstrap  UNUSED ) { return 0; }
+  int tr_dhtAnnounce( tr_torrent * session UNUSED,
+                      tr_bool announce UNUSED ) { return -1; }
+
+
+#else
+
 static int dht_socket;
 static struct event dht_event;
 static tr_port dht_port;
@@ -102,7 +121,6 @@ int
 tr_dhtInit(tr_session *ss)
 {
     struct sockaddr_in sin;
-    struct timeval tv;
     tr_benc benc;
     int rc;
     tr_bool have_id = FALSE;
@@ -168,10 +186,8 @@ tr_dhtInit(tr_session *ss)
         tr_threadNew( dht_bootstrap, cl );
     }
 
-    tr_timevalSet( &tv, 0, tr_cryptoWeakRandInt( 1000000 ) );
     event_set( &dht_event, dht_socket, EV_READ, event_callback, NULL );
-    assert( tr_isTimeval( &tv ) );
-    event_add( &dht_event, &tv );
+    tr_timerAdd( &dht_event, 0, tr_cryptoWeakRandInt( 1000000 ) );
 
     return 1;
 
@@ -360,7 +376,6 @@ static void
 event_callback(int s, short type, void *ignore UNUSED )
 {
     time_t tosleep;
-    struct timeval tv;
 
     if( dht_periodic(s, type == EV_READ, &tosleep, callback, NULL) < 0 ) {
         if(errno == EINTR) {
@@ -375,8 +390,7 @@ event_callback(int s, short type, void *ignore UNUSED )
 
     /* Being slightly late is fine,
        and has the added benefit of adding some jitter. */
-    tr_timevalSet( &tv, tosleep, tr_cryptoWeakRandInt( 1000000 ) );
-    event_add( &dht_event, &tv );
+    tr_timerAdd( &dht_event, tosleep, tr_cryptoWeakRandInt( 1000000 ) );
 }
 
 void
@@ -397,3 +411,5 @@ dht_random_bytes( void * buf, size_t size )
     tr_cryptoRandBuf( buf, size );
     return size;
 }
+
+#endif
