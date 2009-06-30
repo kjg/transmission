@@ -220,14 +220,14 @@ QWidget *
 PrefsDialog :: createWebTab( Session& session )
 {
     HIG * hig = new HIG( this );
-    hig->addSectionTitle( tr( "Web Interface" ) );
+    hig->addSectionTitle( tr( "Web Client" ) );
     QWidget * w;
     QHBoxLayout * h = new QHBoxLayout( );
     QIcon i( style()->standardIcon( QStyle::StandardPixmap( QStyle::SP_DirOpenIcon ) ) );
-    QPushButton * b = new QPushButton( i, tr( "&Open web interface" ) );
+    QPushButton * b = new QPushButton( i, tr( "&Open web client" ) );
     connect( b, SIGNAL(clicked()), &session, SLOT(launchWebInterface()) );
     h->addWidget( b, 0, Qt::AlignRight );
-    QWidget * l = checkBoxNew( tr( "&Enable web interface" ), Prefs::RPC_ENABLED );
+    QWidget * l = checkBoxNew( tr( "&Enable web client" ), Prefs::RPC_ENABLED );
     myUnsupportedWhenRemote << l;
     hig->addRow( l, h, 0 );
     l = hig->addRow( tr( "Listening &port:" ), w = spinBoxNew( Prefs::RPC_PORT, 0, 65535, 1 ) );
@@ -238,7 +238,7 @@ PrefsDialog :: createWebTab( Session& session )
     myWebAuthWidgets << l << w;
     l = hig->addRow( tr( "Pass&word:" ), w = lineEditNew( Prefs::RPC_PASSWORD, QLineEdit::Password ) );
     myWebAuthWidgets << l << w;
-    hig->addWideControl( w = checkBoxNew( tr( "Only allow these IP &addresses to connect:" ), Prefs::RPC_WHITELIST_ENABLED ) );
+    hig->addWideControl( w = checkBoxNew( tr( "Only allow these IP a&ddresses to connect:" ), Prefs::RPC_WHITELIST_ENABLED ) );
     myWebWidgets << w;
     l = hig->addRow( tr( "Addresses:" ), w = lineEditNew( Prefs::RPC_WHITELIST ) );
     myWebWhitelistWidgets << l << w;
@@ -260,7 +260,7 @@ PrefsDialog :: altSpeedDaysEdited( int i )
 
 
 QWidget *
-PrefsDialog :: createBandwidthTab( )
+PrefsDialog :: createSpeedTab( )
 {
     QWidget *l, *r;
     HIG * hig = new HIG( this );
@@ -300,16 +300,17 @@ PrefsDialog :: createBandwidthTab( )
         r = spinBoxNew( Prefs :: ALT_SPEED_LIMIT_UP, 0, INT_MAX, 5 );
         hig->addRow( s, r );
 
-        QCheckBox * c = checkBoxNew( tr( "&Scheduled use:" ), Prefs::ALT_SPEED_LIMIT_TIME_ENABLED );
+        QCheckBox * c = checkBoxNew( tr( "&Scheduled times:" ), Prefs::ALT_SPEED_LIMIT_TIME_ENABLED );
         h = new QHBoxLayout( );
         h->setSpacing( HIG::PAD );
         QWidget * w = timeEditNew( Prefs :: ALT_SPEED_LIMIT_TIME_BEGIN );
         h->addWidget( w, 1 );
         mySchedWidgets << w;
-        w = new QLabel( "and" );
-        h->addWidget( w );
-        mySchedWidgets << w;
+        QLabel * nd = new QLabel( "&to" );
+        h->addWidget( nd );
+        mySchedWidgets << nd;
         w = timeEditNew( Prefs :: ALT_SPEED_LIMIT_TIME_END );
+        nd->setBuddy( w );
         h->addWidget( w, 1 );
         mySchedWidgets << w;
         hig->addRow( c, h, 0 );
@@ -359,26 +360,31 @@ PrefsDialog :: onPortTest( )
 }
 
 QWidget *
-PrefsDialog :: createNetworkTab( )
+PrefsDialog :: createPeersTab( )
 {
     HIG * hig = new HIG( this );
     hig->addSectionTitle( tr( "Incoming Peers" ) );
 
-        QSpinBox * s = spinBoxNew( Prefs::PEER_PORT, 1, 65535, 1 );
-        QHBoxLayout * h = new QHBoxLayout( );
-        QPushButton * b = myPortButton = new QPushButton( tr( "&Test Port" ) );
-        QLabel * l = myPortLabel = new QLabel( tr( "Status unknown" ) );
-        h->addWidget( l );
-        h->addSpacing( HIG :: PAD_BIG );
-        h->addWidget( b );
-        h->setStretchFactor( l, 1 );
-        connect( b, SIGNAL(clicked(bool)), this, SLOT(onPortTest()));
-        connect( &mySession, SIGNAL(portTested(bool)), this, SLOT(onPortTested(bool)));
+    QSpinBox * s = spinBoxNew( Prefs::PEER_PORT, 1, 65535, 1 );
+    QHBoxLayout * h = new QHBoxLayout( );
+    QPushButton * b = myPortButton = new QPushButton( tr( "&Test Port" ) );
+    QLabel * l = myPortLabel = new QLabel( tr( "Status unknown" ) );
+    h->addWidget( l );
+    h->addSpacing( HIG :: PAD_BIG );
+    h->addWidget( b );
+    h->setStretchFactor( l, 1 );
+    connect( b, SIGNAL(clicked(bool)), this, SLOT(onPortTest()));
+    connect( &mySession, SIGNAL(portTested(bool)), this, SLOT(onPortTested(bool)));
 
-        hig->addRow( tr( "&Port for incoming connections:" ), s );
-        hig->addRow( "", h, 0 );
-        hig->addWideControl( checkBoxNew( tr( "Use UPnP or NAT-PMP port &forwarding from my router" ), Prefs::PORT_FORWARDING ) );
-        hig->addWideControl( checkBoxNew( tr( "Pick a &random port every time Transmission is started" ), Prefs :: PEER_PORT_RANDOM_ON_START ) );
+    hig->addRow( tr( "&Port for incoming connections:" ), s );
+    hig->addRow( "", h, 0 );
+    hig->addWideControl( checkBoxNew( tr( "Use UPnP or NAT-PMP port &forwarding from my router" ), Prefs::PORT_FORWARDING ) );
+    hig->addWideControl( checkBoxNew( tr( "Pick a &random port every time Transmission is started" ), Prefs :: PEER_PORT_RANDOM_ON_START ) );
+
+    hig->addSectionDivider( );
+    hig->addSectionTitle( tr( "Limits" ) );
+    hig->addRow( tr( "Maximum peers per &torrent:" ), spinBoxNew( Prefs::PEER_LIMIT_TORRENT, 1, 300, 5 ) );
+    hig->addRow( tr( "Maximum peers &overall:" ), spinBoxNew( Prefs::PEER_LIMIT_GLOBAL, 1, 3000, 5 ) );
 
     hig->finish( );
     return hig;
@@ -438,7 +444,7 @@ PrefsDialog :: encryptionEdited( int i )
 }
 
 QWidget *
-PrefsDialog :: createPeersTab( )
+PrefsDialog :: createPrivacyTab( )
 {
     HIG * hig = new HIG( this );
     hig->addSectionTitle( tr( "Blocklist" ) );
@@ -468,11 +474,6 @@ PrefsDialog :: createPeersTab( )
     hig->addRow( tr( "&Encryption mode:" ), box );
     hig->addWideControl( checkBoxNew( tr( "Use PE&X to find more peers" ), Prefs::PEX_ENABLED ) );
     hig->addWideControl( checkBoxNew( tr( "Use &DHT to find more peers" ), Prefs::DHT_ENABLED ) );
-
-    hig->addSectionDivider( );
-    hig->addSectionTitle( tr( "Limits" ) );
-    hig->addRow( tr( "Maximum peers per &torrent:" ), spinBoxNew( Prefs::PEER_LIMIT_TORRENT, 1, 300, 5 ) );
-    hig->addRow( tr( "Maximum peers &overall:" ), spinBoxNew( Prefs::PEER_LIMIT_GLOBAL, 1, 3000, 5 ) );
 
     hig->finish( );
     updateBlocklistCheckBox( );
@@ -546,7 +547,7 @@ PrefsDialog :: createTorrentsTab( )
         b->setIcon( folderPixmap );
         b->setStyleSheet( "text-align: left; padding-left: 5; padding-right: 5" );
         connect( b, SIGNAL(clicked(bool)), this, SLOT(onDestinationClicked(void)) );
-        hig->addRow( tr( "&Destination folder:" ), b );
+        hig->addRow( tr( "Save to &Location:" ), b );
 
     hig->addSectionDivider( );
     hig->addSectionTitle( tr( "Limits" ) );
@@ -574,12 +575,12 @@ PrefsDialog :: PrefsDialog( Session& session, Prefs& prefs, QWidget * parent ):
     setWindowTitle( tr( "Transmission Preferences" ) );
 
     QTabWidget * t = new QTabWidget( this );
-    t->addTab( createTorrentsTab( ),       tr( "Torrents" ) );
-    t->addTab( createPeersTab( ),          tr( "Peers" ) );
-    t->addTab( createBandwidthTab( ),      tr( "Speed" ) );
-    t->addTab( createNetworkTab( ),        tr( "Network" ) );
-    t->addTab( createWebTab( session ),    tr( "Web" ) );
-    //t->addTab( createTrackerTab( ),        tr( "Trackers" ) );
+    t->addTab( createTorrentsTab( ),     tr( "Torrents" ) );
+    t->addTab( createSpeedTab( ),        tr( "Speed" ) );
+    t->addTab( createPrivacyTab( ),      tr( "Privacy" ) );
+    t->addTab( createPeersTab( ),        tr( "Peers" ) );
+    t->addTab( createWebTab( session ),  tr( "Web" ) );
+    //t->addTab( createTrackerTab( ),    tr( "Trackers" ) );
     myLayout->addWidget( t );
 
     QDialogButtonBox * buttons = new QDialogButtonBox( QDialogButtonBox::Close, Qt::Horizontal, this );

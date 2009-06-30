@@ -107,7 +107,8 @@ TransmissionRemote.prototype =
 				'isPrivate', 'leechers', 'leftUntilDone', 'name',
 				'peersConnected', 'peersGettingFromUs', 'peersSendingToUs',
 				'rateDownload', 'rateUpload', 'seeders', 'sizeWhenDone',
-				'status', 'swarmSpeed', 'totalSize', 'uploadedEver', 'files', 'fileStats' ]
+				'status', 'swarmSpeed', 'totalSize', 'uploadedEver',
+				'downloadDir', 'torrentFile', 'files', 'fileStats' ]
 			}
 		};
 
@@ -125,8 +126,9 @@ TransmissionRemote.prototype =
 				fields: [  'id', 'downloadedEver', 'error', 'errorString',
 					'eta', 'haveUnchecked', 'haveValid', 'leechers', 'leftUntilDone',
 					'peersConnected', 'peersGettingFromUs', 'peersSendingToUs',
-					'rateDownload', 'rateUpload', 'seeders',
-					'status', 'swarmSpeed', 'uploadedEver' ]
+					'rateDownload', 'rateUpload', 'recheckProgress', 'seeders',
+					'sizeWhenDone', 'status', 'swarmSpeed', 'uploadedEver',
+					'downloadDir' ]
 			}
 		};
 

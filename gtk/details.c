@@ -467,9 +467,9 @@ new_priority_combo( struct DetailsImpl * di )
         int value;
         const char * text;
     } items[] = {
-        { TR_PRI_LOW,    N_( "Low" )  },
+        { TR_PRI_HIGH,   N_( "High" )  },
         { TR_PRI_NORMAL, N_( "Normal" ) },
-        { TR_PRI_HIGH,   N_( "High" )  }
+        { TR_PRI_LOW,    N_( "Low" )  }
     };
 
     store = gtk_list_store_new( 2, G_TYPE_INT, G_TYPE_STRING );
@@ -499,7 +499,7 @@ options_page_new( struct DetailsImpl * d )
 {
     guint tag;
     int row;
-    char *s;
+    const char *s;
     GSList *group;
     GtkWidget *t, *w, *tb, *h;
 
@@ -543,7 +543,7 @@ options_page_new( struct DetailsImpl * d )
     hig_workarea_add_section_title( t, &row, _( "Seed-Until Ratio" ) );
 
     group = NULL;
-    s = _( "Use _global setting" );
+    s = _( "Use _global settings" );
     w = gtk_radio_button_new_with_mnemonic( group, s );
     group = gtk_radio_button_get_group( GTK_RADIO_BUTTON( w ) );
     hig_workarea_add_wide_control( t, &row, w );
@@ -790,17 +790,14 @@ refreshInfo( struct DetailsImpl * di, tr_torrent ** torrents, int n )
         if( !haveValid && !haveUnchecked )
             str = none;
         else {
-            char pct[16], ver[64];
-            double n = 100.0 * ( sizeWhenDone - leftUntilDone );
-            g_snprintf( pct, sizeof( pct ), _( "%.1f%%" ), n/sizeWhenDone );
-            tr_strlsize( ver, haveValid, sizeof( ver ) );
-            if( !haveUnchecked )
-                g_snprintf( buf, sizeof(buf), _( "%1$s (%2$s verified)" ), pct, ver );
-            else {
-                char u[64];
-                tr_strlsize( u, haveUnchecked, sizeof( u ) );
-                g_snprintf( buf, sizeof(buf), _( "%1$s (%2$s verified, %3$s unverified)" ), pct, ver, u );
-            }
+            char unver[64], total[64];
+            const double ratio = ( 100.0 * ( haveValid + haveUnchecked ) )  / leftUntilDone;
+            tr_strlsize( total, haveUnchecked + haveValid, sizeof( total ) );
+            tr_strlsize( unver, haveUnchecked,             sizeof( unver ) );
+            if( haveUnchecked )
+                g_snprintf( buf, sizeof( buf ), _( "%1$s (%2$.1f%%); %3$s Unverified" ), total, ratio, unver );
+            else
+                g_snprintf( buf, sizeof( buf ), _( "%1$s (%2$.1f%%)" ), total, ratio );
             str = buf;
         }
     }

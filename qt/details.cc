@@ -269,14 +269,14 @@ Details :: refresh( )
     else {
         QString pct = locale.toString( 100.0*((sizeWhenDone-leftUntilDone)/sizeWhenDone), 'f', 2 );
         if( !haveUnverified )
-            string = tr( "%1 (%2 verified)" )
-                     .arg( pct )
-                     .arg( Utils :: sizeToString( haveVerified ) );
+            string = tr( "%1 (%2%)" )
+                         .arg( Utils :: sizeToString( haveVerified + haveUnverified ) )
+                         .arg( pct );
         else
-            string = tr( "%1 (%2 verified, %3 unverified)" )
-                     .arg( pct )
-                     .arg( Utils :: sizeToString( haveVerified ) )
-                     .arg( Utils :: sizeToString( haveUnverified ) );
+            string = tr( "%1 (%2%); %3 Unverified" )
+                         .arg( Utils :: sizeToString( haveVerified + haveUnverified ) )
+                         .arg( pct )
+                         .arg( Utils :: sizeToString( haveUnverified ) );
     }
     myHaveLabel->setText( string );
 
@@ -292,7 +292,7 @@ Details :: refresh( )
         const QString dstr = Utils::sizeToString( d );
         const QString fstr = Utils::sizeToString( f );
         if( f )
-            string = tr( "%1 (+%2s corrupt)" ).arg( dstr ).arg( fstr );
+            string = tr( "%1 (+%2 corrupt)" ).arg( dstr ).arg( fstr );
         else
             string = dstr;
     }
@@ -796,7 +796,7 @@ Details :: createInfoTab( )
 {
     HIG * hig = new HIG( this );
 
-    hig->addSectionTitle( tr( "Transfer" ) );
+    hig->addSectionTitle( tr( "Activity" ) );
     hig->addRow( tr( "Torrent size:" ), mySizeLabel = new SqueezeLabel );
     hig->addRow( tr( "Have:" ), myHaveLabel = new SqueezeLabel );
     hig->addRow( tr( "Downloaded:" ), myDownloadedLabel = new SqueezeLabel );
@@ -913,7 +913,7 @@ Details :: createOptionsTab( )
     hig->addWideControl( c );
     connect( c, SIGNAL(clicked(bool)), this, SLOT(onHonorsSessionLimitsToggled(bool)) );
 
-    c = new QCheckBox( tr( "Limit &download speed (KB/s)" ) );
+    c = new QCheckBox( tr( "Limit &download speed (KB/s):" ) );
     mySingleDownCheck = c;
     s = new QSpinBox( );
     mySingleDownSpin = s;
@@ -923,7 +923,7 @@ Details :: createOptionsTab( )
     connect( c, SIGNAL(clicked(bool)), this, SLOT(onDownloadLimitedToggled(bool)) );
     connect( s, SIGNAL(valueChanged(int)), this, SLOT(onDownloadLimitChanged(int)));
 
-    c = new QCheckBox( tr( "Limit &upload speed (KB/s)" ) );
+    c = new QCheckBox( tr( "Limit &upload speed (KB/s):" ) );
     mySingleUpCheck = c;
     s = new QSpinBox( );
     mySingleUpSpin = s;
@@ -934,9 +934,9 @@ Details :: createOptionsTab( )
     connect( s, SIGNAL(valueChanged(int)), this, SLOT(onUploadLimitChanged(int)));
 
     m = new QComboBox;
-    m->addItem( tr( "Low" ),    TR_PRI_LOW );
-    m->addItem( tr( "Normal" ), TR_PRI_NORMAL );
     m->addItem( tr( "High" ),   TR_PRI_HIGH );
+    m->addItem( tr( "Normal" ), TR_PRI_NORMAL );
+    m->addItem( tr( "Low" ),    TR_PRI_LOW );
     connect( m, SIGNAL(currentIndexChanged(int)), this, SLOT(onBandwidthPriorityChanged(int)));
     hig->addRow( tr( "Torrent &priority:" ), m );
     myBandwidthPriorityCombo = m;
@@ -945,7 +945,7 @@ Details :: createOptionsTab( )
     hig->addSectionDivider( );
     hig->addSectionTitle( tr( "Seed-Until Ratio" ) );
 
-    r = new QRadioButton( tr( "Use &global setting" ) );
+    r = new QRadioButton( tr( "Use &global settings" ) );
     r->setProperty( RATIO_KEY, TR_RATIOLIMIT_GLOBAL );
     connect( r, SIGNAL(clicked(bool)), this, SLOT(onSeedUntilChanged(bool)));
     mySeedGlobalRadio = r;
@@ -978,7 +978,7 @@ Details :: createOptionsTab( )
     s->setRange( 1, 300 );
     connect( s, SIGNAL(valueChanged(int)), this, SLOT(onMaxPeersChanged(int)));
     myPeerLimitSpin = s;
-    hig->addRow( tr( "&Maximum Peers" ), s );
+    hig->addRow( tr( "&Maximum peers:" ), s );
 
     hig->finish( );
 
