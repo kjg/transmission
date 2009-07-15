@@ -25,17 +25,11 @@ if test m4_substr(peer_id_prefix,6,1) = "0"; then
     CFLAGS="$CFLAGS -g -O3 "
     CXXFLAGS="$CXXFLAGS -g -O3 "
   fi
-  AC_DEFINE(TR_STABLE_RELEASE, 1, [Define to 1 if this is a stable release of Transmission])
 else
   supported_build=no
   if test "x$GCC" = "xyes" ; then
     CFLAGS="$CFLAGS -g -O0"
     CXXFLAGS="$CXXFLAGS -g -O0"
-  fi
-  if test m4_substr(peer_id_prefix,6,1) = "X"; then
-    AC_DEFINE(TR_BETA_RELEASE, 1, [Define to 1 if this is a beta release of Transmission])
-  else
-    AC_DEFINE(TR_NIGHTLY_RELEASE, 1, [Define to 1 if this is a nightly release of Transmission])
   fi
 fi
 AM_CONDITIONAL(TR_UNSTABLE, test "x$supported_build" = "xno")
@@ -81,11 +75,12 @@ fi
 AC_HEADER_STDC
 AC_HEADER_TIME
 
-AC_CHECK_FUNCS([lrintf strlcpy daemon dirname basename daemon strcasecmp localtime_r posix_fallocate memmem])
+AC_CHECK_FUNCS([lrintf strlcpy daemon dirname basename strcasecmp localtime_r posix_fallocate memmem])
 AC_PROG_INSTALL
 AC_PROG_MAKE_SET
 ACX_PTHREAD
 
+AC_SEARCH_LIBS(cos, [m])
 AC_SEARCH_LIBS([socket], [socket net])
 AC_SEARCH_LIBS([gethostbyname], [nsl bind])
 PKG_CHECK_MODULES(OPENSSL, [openssl >= $OPENSSL_MINIMUM], , [CHECK_SSL()])
@@ -160,6 +155,15 @@ AC_TRY_LINK([#include <stdarg.h>], [va_list ap1, ap2; va_copy(ap1, ap2);],
 ])
 
 
+dnl libevent likes to link against librt if possible
+dnl for clock_gettime() and clock_settime()
+dnl TODO(libevent2): this can probably be removed after
+dnl we switch to libevent2, since it will have PKG_CONFIG
+AC_CHECK_LIB([rt],
+             [clock_gettime],
+             [libevent_extra_libs="-lrt"],
+             [libevent_extra_libs=""])
+
 dnl build our copy of libevent whether we use it or not,
 dnl because "make dist" needs its Makefiles to exist, and
 dnl AM_CONDITIONAL + AC_CONFIG_SUBDIRS don't seem to play nice
@@ -168,7 +172,7 @@ libevent_source=bundled
 AC_CHECK_LIB([event],[evutil_vsnprintf],
              [libevent_found=yes],
              [libevent_found=no],
-             [-levent])
+             [$libevent_extra_libs])
 AC_CHECK_HEADER([event-config.h],
                 [libevent_headers_found=yes],
                 [libevent_headers_found=no])
@@ -185,7 +189,7 @@ if test "x$libevent_source" = "xbundled"; then
     LIBEVENT_LIBS="\$(top_builddir)/third-party/libevent/libevent.la"
 else
     LIBEVENT_CFLAGS=""
-    LIBEVENT_LIBS="-levent -lrt"
+    LIBEVENT_LIBS="-levent $libevent_extra_libs"
 fi
 AC_SUBST(LIBEVENT_CFLAGS)
 AC_SUBST(LIBEVENT_LIBS)

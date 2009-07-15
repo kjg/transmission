@@ -1600,6 +1600,7 @@
 			isa = PBXNativeTarget;
 			buildConfigurationList = BE11834C0CE160A80002D0F3 /* Build configuration list for PBXNativeTarget "miniupnp" */;
 			buildPhases = (
+				A2305097100C0293003FDB0C /* ShellScript */,
 				BE1183440CE160960002D0F3 /* Headers */,
 				BE1183450CE160960002D0F3 /* Sources */,
 				BE1183460CE160960002D0F3 /* Frameworks */,
@@ -1824,7 +1825,20 @@
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 			shellPath = /bin/sh;
-			shellScript = "sh macosx/version.sh";
+			shellScript = "sh update-version-h.sh";
+		};
+		A2305097100C0293003FDB0C /* ShellScript */ = {
+			isa = PBXShellScriptBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			inputPaths = (
+			);
+			outputPaths = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+			shellPath = /bin/sh;
+			shellScript = "cd ./third-party/miniupnp/\nsh updateminiupnpcstrings.sh";
 		};
 		BE75C3510C729EE100DBEFE0 /* ShellScript */ = {
 			isa = PBXShellScriptBuildPhase;
@@ -2353,6 +2367,7 @@
 				PRELINK_LIBS = "";
 				SDKROOT = macosx10.5;
 				STRIP_INSTALLED_PRODUCT = NO;
+				VALID_ARCHS = "i386 ppc ppc7400 ppc970 x86_64";
 			};
 			name = Debug;
 		};
@@ -2489,6 +2504,7 @@
 				OTHER_LDFLAGS = "";
 				PREBINDING = NO;
 				SDKROOT = macosx10.5;
+				VALID_ARCHS = "i386 ppc ppc7400 ppc970 x86_64";
 			};
 			name = Release;
 		};
@@ -2579,6 +2595,7 @@
 				PREBINDING = NO;
 				SDKROOT = macosx10.5;
 				STRIP_INSTALLED_PRODUCT = NO;
+				VALID_ARCHS = "i386 ppc ppc7400 ppc970 x86_64";
 			};
 			name = "Release - Debug";
 		};
