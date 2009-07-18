@@ -3,8 +3,8 @@ dnl STATUS: "X" for prerelease beta builds,
 dnl         "Z" for unsupported trunk builds,
 dnl         "0" for stable, supported releases
 dnl these should be the only two lines you need to change
-m4_define([user_agent_prefix],[1.72+])
-m4_define([peer_id_prefix],[-TR172Z-])
+m4_define([user_agent_prefix],[1.73+])
+m4_define([peer_id_prefix],[-TR173Z-])
 
 AC_INIT([transmission],
         [user_agent_prefix],
@@ -351,14 +351,14 @@ case $host_os in
 
   *darwin*)
     have_darwin="yes"
-    # Make sure the Universal SDK is installed
-    if test ! -d /Developer/SDKs/MacOSX10.4u.sdk; then
+    # Make sure the proper Mac SDK is installed
+    if test ! -d /Developer/SDKs/MacOSX10.5.sdk; then
       cat << EOF
-You need to install the Universal SDK in order to build Transmission:
+You need to install the Mac OS X 10.5 SDK in order to build Transmission:
   Get your Xcode CD or package
   Restart the install
   When it gets to "Installation Type", select "Customize"
-  Select "Mac OS X 10.4 (Universal) SDK" under "Cross Development"
+  Select "Mac OS X 10.5 SDK" under "Cross Development"
   Finish the install.
 EOF
       exit 1
@@ -374,7 +374,7 @@ AC_ARG_ENABLE([cli],
 AM_CONDITIONAL([BUILD_CLI],[test "x$build_cli" = "xyes"])
 
 AC_ARG_ENABLE([mac],
-              [AS_HELP_STRING([--enable-mac],[build OS X client])],
+              [AS_HELP_STRING([--enable-mac],[build Mac client])],
               [build_mac=${enableval}],
               [build_mac=${have_darwin}])
 AM_CONDITIONAL([BUILD_MAC],[test "x$build_mac" = "xyes"])
@@ -425,7 +425,7 @@ Configuration:
         System or bundled libevent:    ${libevent_source}
         DHT support:                   ${enable_dht}
 
-        Build OS X client:             ${build_mac}
+        Build Mac client:              ${build_mac}
         Build GTK+ client:             ${build_gtk}
           ... with gio support:        ${use_gio}
           ... with dbus-glib support:  ${use_dbus_glib}
