@@ -18,6 +18,15 @@ Torrent._StatusSeeding         = 8;
 Torrent._StatusPaused          = 16;
 Torrent._InfiniteTimeRemaining = 215784000; // 999 Hours - may as well be infinite
 
+Torrent._RatioUseGlobal        = 0;
+Torrent._RatioUseLocal         = 1;
+Torrent._RatioUnlimited        = 2;
+
+Torrent._ErrNone               = 0;
+Torrent._ErrTrackerWarning     = 1;
+Torrent._ErrTrackerError       = 2;
+Torrent._ErrLocalError         = 3;
+
 Torrent.prototype =
 {
 	/*
@@ -158,7 +167,6 @@ Torrent.prototype =
 	dateAdded: function() { return this._date; },
 	downloadSpeed: function() { return this._download_speed; },
 	downloadTotal: function() { return this._download_total; },
-	errorMessage: function() { return this._error_message; },
 	hash: function() { return this._hashString; },
 	id: function() { return this._id; },
 	isActive: function() { return this.state() != Torrent._StatusPaused; },
@@ -201,6 +209,13 @@ Torrent.prototype =
 		this.fileList().show();
 	},
 	hideFileList: function() { this.fileList().hide(); },
+	seedRatioLimit: function(){
+		switch( this._seed_ratio_mode ) {
+			case Torrent._RatioUseGlobal: return this._controller.seedRatioLimit();
+			case Torrent._RatioUseLocal:  return this._seed_ratio_limit;
+			default:                      return -1;
+		}
+	},
 	
 	/*--------------------------------------------
 	 * 
@@ -294,6 +309,9 @@ Torrent.prototype =
 		this._leftUntilDone         = data.leftUntilDone;
 		this._download_total        = data.downloadedEver;
 		this._upload_total          = data.uploadedEver;
+		this._upload_ratio          = data.uploadRatio;
+		this._seed_ratio_limit      = data.seedRatioLimit;
+		this._seed_ratio_mode       = data.seedRatioMode;
 		this._download_speed        = data.rateDownload;
 		this._upload_speed          = data.rateUpload;
 		this._peers_connected       = data.peersConnected;
@@ -302,7 +320,7 @@ Torrent.prototype =
 		this._sizeWhenDone          = data.sizeWhenDone;
 		this._recheckProgress       = data.recheckProgress;
 		this._error                 = data.error;
-		this._error_message         = data.errorString;
+		this._error_string          = data.errorString;
 		this._eta                   = data.eta;
 		this._swarm_speed           = data.swarmSpeed;
 		this._total_leechers        = Math.max( 0, data.leechers );
@@ -326,14 +344,24 @@ Torrent.prototype =
 		}
 	},
 
+	getErrorMessage: function()
+	{
+		if( this._error  == Torrent._ErrTrackerWarning )
+			return 'Tracker returned a warning: ' + this._error_string;
+		if( this._error  == Torrent._ErrTrackerError )
+			return 'Tracker returned an error: ' + this._error_string;
+		if( this._error  == Torrent._ErrLocalError )
+			return 'Error: ' + this._error_string;
+		return null;
+	},
+
 	getPeerDetails: function()
 	{
-		if( this._error_message &&
-		    this._error_message !== '' &&
-		    this._error_message !== 'other' )
-			return this._error_message;
-
 		var c;
+
+		if(( c = this.getErrorMessage( )))
+			return c;
+
 		var st = this.state( );
 		switch( st )
 		{
@@ -437,27 +465,44 @@ Torrent.prototype =
 		}
 		else
 		{
-			// Update the 'in progress' bar
-			e = root._progress_complete_container;
-			c = 'torrent_progress_bar';
-			c += (this.isActive()) ? ' complete' : ' complete_stopped';
-			e.className = c;
-			
 			// Create the 'progress details' label
 			// Eg: '698.05 MB, uploaded 8.59 GB (Ratio: 12.3)'
 			c = Math.formatBytes( this._size );
 			c += ', uploaded ';
 			c += Math.formatBytes( this._upload_total );
 			c += ' (Ratio ';
-			c += Math.ratio( this._upload_total, this._download_total );
+			c += Math.round(this._upload_ratio*100)/100;
 			c += ')';
 			progress_details = c;
-			
-			// Hide the 'incomplete' bar
-			root._progress_incomplete_container.style.display = 'none';
-			
-			// Set progress to maximum
-			root._progress_complete_container.style.width =  MaxBarWidth + '%';
+
+			var status = this.isActive() ? 'complete' : 'complete_stopped';
+
+			if(this.isActive() && this.seedRatioLimit() > 0){
+				status = 'complete seeding'
+				var seedRatioRatio = this._upload_ratio / this.seedRatioLimit();
+				var seedRatioPercent = Math.round( seedRatioRatio * 100 * MaxBarWidth ) / 100;
+
+				// Set progress to percent seeded
+				root._progress_complete_container.style.width =	seedRatioPercent + '%';
+
+				// Update the 'incomplete' bar
+				root._progress_incomplete_container.className = 'torrent_progress_bar incomplete seeding'
+				root._progress_incomplete_container.style.display = 'block';
+				root._progress_incomplete_container.style.width = MaxBarWidth - seedRatioPercent + '%';
+			}
+			else
+			{
+				// Hide the 'incomplete' bar
+				root._progress_incomplete_container.className = 'torrent_progress_bar incomplete'
+				root._progress_incomplete_container.style.display = 'none';
+
+				// Set progress to maximum
+				root._progress_complete_container.style.width =	MaxBarWidth + '%';
+			}
+
+			// Update the 'in progress' bar
+			e = root._progress_complete_container;
+			e.className = 'torrent_progress_bar ' + status;
 		}
 		
 		// Update the progress details

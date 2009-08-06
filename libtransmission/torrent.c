@@ -30,7 +30,7 @@
 #include "completion.h"
 #include "crypto.h" /* for tr_sha1 */
 #include "resume.h"
-#include "fdlimit.h" /* tr_fdFileClose */
+#include "fdlimit.h" /* tr_fdTorrentClose */
 #include "metainfo.h"
 #include "peer-mgr.h"
 #include "platform.h" /* TR_PATH_DELIMITER_STR */
@@ -285,20 +285,18 @@ onTrackerResponse( void * tracker UNUSED,
 
         case TR_TRACKER_WARNING:
             tr_torerr( tor, _( "Tracker warning: \"%s\"" ), event->text );
-            tor->error = -1;
-            tr_strlcpy( tor->errorString, event->text,
-                       sizeof( tor->errorString ) );
+            tor->error = TR_STAT_TRACKER_WARNING;
+            tr_strlcpy( tor->errorString, event->text, sizeof( tor->errorString ) );
             break;
 
         case TR_TRACKER_ERROR:
             tr_torerr( tor, _( "Tracker error: \"%s\"" ), event->text );
-            tor->error = -2;
-            tr_strlcpy( tor->errorString, event->text,
-                       sizeof( tor->errorString ) );
+            tor->error = TR_STAT_TRACKER_ERROR;
+            tr_strlcpy( tor->errorString, event->text, sizeof( tor->errorString ) );
             break;
 
         case TR_TRACKER_ERROR_CLEAR:
-            tor->error = 0;
+            tor->error = TR_STAT_OK;
             tor->errorString[0] = '\0';
             break;
     }
@@ -604,7 +602,7 @@ torrentRealInit( tr_torrent * tor, const tr_ctor * ctor )
 
     tr_ctorInitTorrentWanted( ctor, tor );
 
-    tor->error   = 0;
+    tor->error = TR_STAT_OK;
 
     tr_bitfieldConstruct( &tor->checkedPieces, tor->info.pieceCount );
     tr_torrentUncheck( tor );
@@ -672,36 +670,36 @@ torrentRealInit( tr_torrent * tor, const tr_ctor * ctor )
         torrentStart( tor, FALSE );
 }
 
-int
-tr_torrentParse( const tr_ctor     * ctor,
-                 tr_info           * setmeInfo )
+tr_parse_result
+tr_torrentParse( const tr_ctor * ctor, tr_info * setmeInfo )
 {
-    int             err = 0;
     int             doFree;
+    tr_bool         didParse;
     tr_info         tmp;
     const tr_benc * metainfo;
     tr_session    * session = tr_ctorGetSession( ctor );
+    tr_parse_result result = TR_PARSE_OK;
 
     if( setmeInfo == NULL )
         setmeInfo = &tmp;
     memset( setmeInfo, 0, sizeof( tr_info ) );
 
-    if( !err && tr_ctorGetMetainfo( ctor, &metainfo ) )
-        return TR_EINVALID;
+    if( tr_ctorGetMetainfo( ctor, &metainfo ) )
+        return TR_PARSE_ERR;
 
-    err = tr_metainfoParse( session, setmeInfo, metainfo );
-    doFree = !err && ( setmeInfo == &tmp );
+    didParse = tr_metainfoParse( session, setmeInfo, metainfo );
+    doFree = didParse && ( setmeInfo == &tmp );
 
-    if( !err && !getBlockSize( setmeInfo->pieceSize ) )
-        err = TR_EINVALID;
+    if( didParse && !getBlockSize( setmeInfo->pieceSize ) )
+        result = TR_PARSE_ERR;
 
-    if( !err && session && tr_torrentExists( session, setmeInfo->hash ) )
-        err = TR_EDUPLICATE;
+    if( didParse && session && tr_torrentExists( session, setmeInfo->hash ) )
+        result = TR_PARSE_DUPLICATE;
 
     if( doFree )
         tr_metainfoFree( setmeInfo );
 
-    return err;
+    return result;
 }
 
 tr_torrent *
@@ -859,9 +857,8 @@ tr_torrentStat( tr_torrent * tor )
     s = &tor->stats;
     s->id = tor->uniqueId;
     s->activity = tr_torrentGetActivity( tor );
-    s->error  = tor->error;
-    memcpy( s->errorString, tor->errorString,
-           sizeof( s->errorString ) );
+    s->error = tor->error;
+    memcpy( s->errorString, tor->errorString, sizeof( s->errorString ) );
 
     tc = tor->tracker;
     ti = tr_trackerGetAddress( tor->tracker, tor );
@@ -1247,7 +1244,8 @@ checkAndStartImpl( void * vtor )
     now = time( NULL );
     tor->isRunning = TRUE;
     tor->needsSeedRatioCheck = TRUE;
-    *tor->errorString = '\0';
+    tor->error = TR_STAT_OK;
+    tor->errorString[0] = '\0';
     tr_torrentResetTransferStats( tor );
     tor->completeness = tr_cpGetStatus( &tor->completion );
     tr_torrentSaveResume( tor );
@@ -1962,7 +1960,7 @@ tr_torrentSetAnnounceList( tr_torrent *            tor,
 
         /* try to parse it back again, to make sure it's good */
         memset( &tmpInfo, 0, sizeof( tr_info ) );
-        if( !tr_metainfoParse( tor->session, &tmpInfo, &metainfo ) )
+        if( tr_metainfoParse( tor->session, &tmpInfo, &metainfo ) )
         {
             /* it's good, so keep these new trackers and free the old ones */
 

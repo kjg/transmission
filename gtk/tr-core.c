@@ -627,7 +627,7 @@ tr_core_init( GTypeInstance *  instance,
                                                   struct TrCorePrivate );
 
     /* create the model used to store torrent data */
-    g_assert( ALEN( types ) == MC_ROW_COUNT );
+    g_assert( G_N_ELEMENTS( types ) == MC_ROW_COUNT );
     store = gtk_list_store_newv( MC_ROW_COUNT, types );
 
     p->model    = GTK_TREE_MODEL( store );
@@ -826,11 +826,10 @@ add_ctor( TrCore * core, tr_ctor * ctor, gboolean doPrompt, gboolean doNotify )
 
     switch( err )
     {
-        case TR_EINVALID:
+        case TR_PARSE_ERR:
             break;
 
-        case TR_EDUPLICATE:
-            g_message( "it's a duplicate" );
+        case TR_PARSE_DUPLICATE:
             /* don't complain about .torrent files in the watch directory
              * that have already been added... that gets annoying and we
              * don't want to be nagging users to clean up their watch dirs */
@@ -910,8 +909,8 @@ add_filename( TrCore      * core,
         tr_ctorSetMetainfoFromFile( ctor, filename );
 
         err = add_ctor( core, ctor, doPrompt, doNotify );
-        if( err == TR_EINVALID )
-            tr_core_errsig( core, TR_EINVALID, filename );
+        if( err == TR_PARSE_ERR )
+            tr_core_errsig( core, TR_PARSE_ERR, filename );
     }
 }
 
