@@ -23,7 +23,6 @@
 #include "transmission.h"
 #include "completion.h"
 #include "fdlimit.h"
-#include "resume.h" /* tr_torrentSaveResume() */
 #include "inout.h"
 #include "list.h"
 #include "platform.h"
@@ -47,6 +46,7 @@ verifyTorrent( tr_torrent * tor, tr_bool * stopFlag )
     tr_bool changed = 0;
     tr_bool hadPiece = 0;
     uint32_t piecePos = 0;
+    uint32_t pieceBytesRead = 0;
     tr_file_index_t fileIndex = 0;
     tr_piece_index_t pieceIndex = 0;
     const int64_t buflen = tor->info.pieceSize;
@@ -90,6 +90,8 @@ verifyTorrent( tr_torrent * tor, tr_bool * stopFlag )
         /* read a bit */
         if( (fd>=0) && tr_lseek( fd, filePos, SEEK_SET ) != -1 ) {
             const int64_t numRead = read( fd, buffer, bytesThisPass );
+            if( numRead > 0 )
+                pieceBytesRead += numRead;
             if( numRead == bytesThisPass )
                 SHA1_Update( &sha, buffer, numRead );
         }
@@ -121,9 +123,17 @@ verifyTorrent( tr_torrent * tor, tr_bool * stopFlag )
             tr_torrentSetPieceChecked( tor, pieceIndex, TRUE );
             tor->anyDate = time( NULL );
 
+            /* going full-throttle on a verify can choke other processes'
+             * disk IO, so wait a fwe msec between pieces.
+             * The msec is arbitrary, and the "if" clause is to make sure we
+             * don't slow down verification of files that don't exist */
+            if( pieceBytesRead == tr_torPieceCountBytes( tor, pieceIndex ) )
+                tr_wait( 50 );
+
             SHA1_Init( &sha );
             ++pieceIndex;
             piecePos = 0;
+            pieceBytesRead = 0;
         }
 
         /* if we're finishing a file... */
@@ -219,7 +229,7 @@ verifyThreadFunc( void * unused UNUSED )
         if( !stopCurrent )
         {
             if( changed )
-                tr_torrentSaveResume( tor );
+                tr_torrentSetDirty( tor );
             fireCheckDone( tor, currentNode.verify_done_cb );
         }
     }

@@ -19,7 +19,7 @@ LIBS += $${TRANSMISSION_TOP}/build/debug/libminiupnp.a
 LIBS += $${TRANSMISSION_TOP}/build/debug/libnatpmp.a
 LIBS += $${TRANSMISSION_TOP}/build/debug/libevent.a
 
-TRANSLATIONS += transmission_en.ts
+TRANSLATIONS += transmission_en.ts transmission_ru.ts
 
 FORMS += mainwin.ui
 RESOURCES += application.qrc

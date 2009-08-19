@@ -3,7 +3,7 @@
  *
  * This file is licensed by the GPL version 2.  Works owned by the
  * Transmission project are granted a special exemption to clause 2(b)
- * so that the bulk of its code can remain under the MIT license. 
+ * so that the bulk of its code can remain under the MIT license.
  * This exemption does not extend to derived works not owned by
  * the Transmission project.
  *
@@ -20,7 +20,7 @@
 #include "completion.h" /* tr_completion */
 #include "ratecontrol.h" /* tr_ratecontrol */
 #include "session.h" /* tr_globalLock(), tr_globalUnlock() */
-#include "utils.h" /* tr_bitfield */
+#include "utils.h" /* TR_GNUC_PRINTF */
 
 struct tr_bandwidth;
 struct tr_ratecontrol;
@@ -118,6 +118,11 @@ tr_torrent*      tr_torrentNext( tr_session  * session,
 
 void             tr_torrentCheckSeedRatio( tr_torrent * tor );
 
+/** save a torrent's .resume file if it's changed since the last time it was saved */
+void             tr_torrentSave( tr_torrent * tor );
+
+void             tr_torrentSetLocalError( tr_torrent * tor, const char * fmt, ... ) TR_GNUC_PRINTF( 2, 3 );
+
 
 
 typedef enum
@@ -204,6 +209,7 @@ struct tr_torrent
     tr_bool                    isDeleting;
     tr_bool                    needsSeedRatioCheck;
     tr_bool                    startAfterVerify;
+    tr_bool                    isDirty;
 
     uint16_t                   maxConnectedPeers;
 
@@ -222,6 +228,8 @@ struct tr_torrent
 
     double                     desiredRatio;
     tr_ratiolimit              ratioLimitMode;
+
+    uint64_t                   preVerifyTotal;
 };
 
 /* get the index of this piece's first block */
@@ -323,6 +331,15 @@ static inline tr_bool tr_isTorrent( const tr_torrent * tor )
     return ( tor != NULL )
         && ( tor->magicNumber == TORRENT_MAGIC_NUMBER )
         && ( tr_isSession( tor->session ) );
+}
+
+/* set a flag indicating that the torrent's .resume file
+ * needs to be saved when the torrent is closed */
+static inline void tr_torrentSetDirty( tr_torrent * tor )
+{
+    assert( tr_isTorrent( tor ) );
+
+    tor->isDirty = TRUE;
 }
 
 #endif

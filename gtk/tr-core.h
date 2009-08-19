@@ -139,7 +139,7 @@ gboolean tr_core_add_metainfo( TrCore      * core,
 void tr_core_add_torrent( TrCore*, TrTorrent*, gboolean doNotify );
 
 /** Present the main window */
-gboolean tr_core_present_window( TrCore*, gboolean * setme_success, GError ** err ); 
+gboolean tr_core_present_window( TrCore*, gboolean * setme_success, GError ** err );
 
 
 /**
@@ -199,6 +199,8 @@ enum
     MC_NAME_COLLATED,
     MC_TORRENT,
     MC_TORRENT_RAW,
+    MC_SPEED_UP,
+    MC_SPEED_DOWN,
     MC_ACTIVITY,
     MC_ROW_COUNT
 };

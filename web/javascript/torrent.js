@@ -8,7 +8,7 @@
 
 function Torrent( transferListParent, fileListParent, controller, data) {
 	this.initialize( transferListParent, fileListParent, controller, data);
-} 
+}
 
 // Constants
 Torrent._StatusWaitingToCheck  = 1;
@@ -26,6 +26,14 @@ Torrent._ErrNone               = 0;
 Torrent._ErrTrackerWarning     = 1;
 Torrent._ErrTrackerError       = 2;
 Torrent._ErrLocalError         = 3;
+
+Torrent._StaticFields = [ 'addedDate', 'announceURL', 'comment', 'creator',
+    'dateCreated', 'hashString', 'id', 'isPrivate', 'name', 'totalSize' ]
+Torrent._DynamicFields = [ 'downloadedEver', 'error', 'errorString', 'eta',
+    'haveUnchecked', 'haveValid', 'leechers', 'leftUntilDone', 'peersConnected',
+    'peersGettingFromUs', 'peersSendingToUs', 'rateDownload', 'rateUpload',
+    'recheckProgress', 'seeders', 'sizeWhenDone', 'status', 'swarmSpeed',
+    'uploadedEver', 'uploadRatio', 'seedRatioLimit', 'seedRatioMode', 'downloadDir' ]
 
 Torrent.prototype =
 {
@@ -143,9 +151,9 @@ Torrent.prototype =
 	},
 	
 	/*--------------------------------------------
-	 * 
+	 *
 	 *  S E T T E R S   /   G E T T E R S
-	 * 
+	 *
 	 *--------------------------------------------*/
 	
 	/* Return the DOM element for this torrent (a <LI> element) */
@@ -218,9 +226,9 @@ Torrent.prototype =
 	},
 	
 	/*--------------------------------------------
-	 * 
+	 *
 	 *  E V E N T   F U N C T I O N S
-	 * 
+	 *
 	 *--------------------------------------------*/
 	
 	/*
@@ -290,9 +298,9 @@ Torrent.prototype =
 	},
 
 	/*--------------------------------------------
-	 * 
+	 *
 	 *  I N T E R F A C E   F U N C T I O N S
-	 * 
+	 *
 	 *--------------------------------------------*/
 	
 	refresh: function(data) {
