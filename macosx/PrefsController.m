@@ -425,7 +425,7 @@ tr_session * fHandle;
         BOOL isDirectory;
         if ([[NSFileManager defaultManager] fileExistsAtPath: directory isDirectory: &isDirectory] && isDirectory)
         {
-            NSArray * directoryContents = [[NSFileManager defaultManager] directoryContentsAtPath: directory];
+            NSArray * directoryContents = [[NSFileManager defaultManager] contentsOfDirectoryAtPath: directory error: NULL];
             for (NSString * sound in directoryContents)
             {
                 sound = [sound stringByDeletingPathExtension];
@@ -972,8 +972,8 @@ tr_session * fHandle;
         [fRPCWhitelistArray addObject: @""];
         [fRPCWhitelistTable reloadData];
         
-        int row = [fRPCWhitelistArray count] - 1;
-        [fRPCWhitelistTable selectRow: row byExtendingSelection: NO];
+        const int row = [fRPCWhitelistArray count] - 1;
+        [fRPCWhitelistTable selectRowIndexes: [NSIndexSet indexSetWithIndex: row] byExtendingSelection: NO];
         [fRPCWhitelistTable editColumn: 0 row: row withEvent: nil select: YES];
     }
 }
